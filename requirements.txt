@@ -3,6 +3,6 @@ streamlit==1.39.0
 boto3==1.34.67
 streamlit-nested-layout>=0.1.1
 plotly
-psycopg2
+psycopg2-binary
 thefuzz
 sqlalchemy
