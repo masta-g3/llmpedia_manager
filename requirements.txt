@@ -6,3 +6,5 @@ plotly
 psycopg2-binary
 thefuzz
 sqlalchemy
+tweepy>=4.14.0
+python-dotenv>=1.0.0

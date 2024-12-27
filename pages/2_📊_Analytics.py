@@ -66,168 +66,109 @@ def escape_html(text):
     # Wrap the text in a span to prevent code block rendering of special characters
     return f'<span>{text}</span>'
 
+def display_date(date):
+    """Display formatted date."""
+    return st.markdown(
+        f'<div class="date-display">{date.strftime("%B %d, %Y")}</div>',
+        unsafe_allow_html=True
+    )
+
+def display_metadata_tags(row):
+    """Display metadata tags in columns."""
+    meta_col1, meta_col2, meta_col3 = st.columns(3)
+    
+    with meta_col1:
+        if row.get('is_thread_start', False):
+            st.markdown('<span class="metadata-tag thread-indicator">🧵 Thread</span>', unsafe_allow_html=True)
+    
+    with meta_col2:
+        if pd.notna(row.get("tweet_type")):
+            st.markdown(f'<span class="metadata-tag tweet-type-tag">📝 {row["tweet_type"]}</span>', unsafe_allow_html=True)
+    
+    with meta_col3:
+        if pd.notna(row.get("arxiv_code")):
+            st.markdown(f'<span class="metadata-tag arxiv-tag">📄 {row["arxiv_code"]}</span>', unsafe_allow_html=True)
+
+def display_paper_preview(arxiv_code):
+    """Display paper preview if arxiv code exists."""
+    if pd.notna(arxiv_code):
+        st.markdown('<div class="paper-preview">', unsafe_allow_html=True)
+        preview_col1, preview_col2 = st.columns(2)
+        with preview_col1:
+            st.markdown(
+                f'<img src="https://arxiv-art.s3.us-west-2.amazonaws.com/{arxiv_code}.png" '
+                'style="width: 300px; height: 300px; object-fit: contain;" '
+                'alt="Paper visualization">',
+                unsafe_allow_html=True
+            )
+        with preview_col2:
+            st.markdown(
+                f'<img src="https://arxiv-first-page.s3.us-east-1.amazonaws.com/{arxiv_code}.png" '
+                'style="width: 300px; height: 300px; object-fit: contain;" '
+                'alt="Paper first page">',
+                unsafe_allow_html=True
+            )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+def display_tweet_text(row):
+    """Display tweet text content."""
+    text = row['tweet_insight'] if pd.notna(row.get('tweet_insight')) else row['Post text']
+    st.markdown(f'<div class="tweet-text">{text}</div>', unsafe_allow_html=True)
+
+def display_metrics(metrics_data, is_thread=False):
+    """Display engagement metrics in a formatted container."""
+    st.markdown("""
+        <div style="background-color: rgba(128, 128, 128, 0.05); padding: 12px; border-radius: 8px;">
+            <h5 style="margin: 0 0 8px 0; font-size: 0.9em; color: #666;">Engagement Metrics</h5>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f"""
+        <div class="metrics-container" style="flex-direction: column;">
+            <div class="metric-box">
+                <strong>👁️ Impressions</strong><br>{metrics_data['Impressions']:,}
+            </div>
+            <div class="metric-box">
+                <strong>❤️ Likes</strong><br>{metrics_data['Likes']:,}
+            </div>
+            <div class="metric-box">
+                <strong>🔄 Reposts</strong><br>{metrics_data['Reposts']:,}
+            </div>
+            <div class="metric-box">
+                <strong>💬 Replies</strong><br>{metrics_data['Replies']:,}
+            </div>
+        </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+def display_tweet_card(row, is_thread=False):
+    """Display a single tweet card with all components."""
+    with st.container():
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            display_date(row['Date'])
+            display_metadata_tags(row)
+            display_paper_preview(row.get('arxiv_code'))
+            display_tweet_text(row)
+            
+            # Display thread replies if this is a thread
+            if is_thread and 'thread_replies' in row:
+                for reply in row['thread_replies']:
+                    display_tweet_text(reply)
+        
+        with col2:
+            metrics_data = get_thread_metrics(row['thread_df'], row.name) if is_thread else row
+            display_metrics(metrics_data, is_thread)
+
 def display_thread(thread_df):
     """Display a thread of tweets with proper formatting."""
     if thread_df.empty:
         return
         
-    with st.container():
-        st.markdown("""
-            <style>
-            .metadata-container {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                margin: 8px 0;
-            }
-            .metadata-tag {
-                background-color: rgba(128, 128, 128, 0.1);
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-size: 0.85em;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-            }
-            .thread-indicator {
-                color: #FF9900;
-                font-weight: 500;
-            }
-            .tweet-type-tag {
-                color: #1DA1F2;
-            }
-            .arxiv-tag {
-                color: #B31B1B;
-            }
-            .tweet-text {
-                margin: 12px 0;
-                line-height: 1.5;
-            }
-            .date-header {
-                margin: 0;
-                padding: 0;
-                font-size: 1em;
-                color: #666;
-            }
-            .metrics-container {
-                display: flex;
-                gap: 1rem;
-                margin-top: 0.5rem;
-            }
-            .metric-box {
-                background-color: rgba(128, 128, 128, 0.05);
-                padding: 8px;
-                border-radius: 4px;
-                text-align: center;
-                flex: 1;
-            }
-            .date-display {
-                color: #888;
-                font-size: 0.85em;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                margin-bottom: 8px;
-                font-weight: 500;
-            }
-            .paper-preview {
-                display: flex;
-                gap: 16px;
-                margin: 16px 0;
-                background: rgba(128, 128, 128, 0.05);
-                padding: 12px;
-                border-radius: 8px;
-            }
-            .paper-preview img {
-                border-radius: 4px;
-                max-height: 120px;
-                object-fit: contain;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        # Start the tweet card
-        st.markdown('<div class="tweet-card">', unsafe_allow_html=True)
-        
-        # Create two columns for the layout
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            main_tweet = thread_df.iloc[0]
-            
-            # Date display with new style
-            st.markdown(
-                f'<div class="date-display">{main_tweet["Date"].strftime("%B %d, %Y")}</div>',
-                unsafe_allow_html=True
-            )
-            
-            # Metadata container with 3 columns
-            meta_col1, meta_col2, meta_col3 = st.columns(3)
-            
-            with meta_col1:
-                st.markdown('<span class="metadata-tag thread-indicator">🧵 Thread</span>', unsafe_allow_html=True)
-            
-            with meta_col2:
-                if pd.notna(main_tweet["tweet_type"]):
-                    st.markdown(f'<span class="metadata-tag tweet-type-tag">📝 {main_tweet["tweet_type"]}</span>', unsafe_allow_html=True)
-            
-            with meta_col3:
-                if pd.notna(main_tweet["arxiv_code"]):
-                    st.markdown(f'<span class="metadata-tag arxiv-tag">📄 {main_tweet["arxiv_code"]}</span>', unsafe_allow_html=True)
-            
-            # Paper preview if arxiv code exists
-            if pd.notna(main_tweet["arxiv_code"]):
-                st.markdown('<div class="paper-preview">', unsafe_allow_html=True)
-                preview_col1, preview_col2 = st.columns(2)
-                with preview_col1:
-                    st.image(
-                        f"https://arxiv-art.s3.us-west-2.amazonaws.com/{main_tweet['arxiv_code']}.png",
-                        use_column_width=True,
-                        caption="Paper visualization"
-                    )
-                with preview_col2:
-                    st.image(
-                        f"https://arxiv-art.s3.us-west-2.amazonaws.com/arxiv-first-page/{main_tweet['arxiv_code']}.png",
-                        use_column_width=True,
-                        caption="Paper first page"
-                    )
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Tweet text
-            main_tweet_text = main_tweet['tweet_insight'] if pd.notna(main_tweet['tweet_insight']) else main_tweet['Post text']
-            st.markdown(f'<div class="tweet-text">{main_tweet_text}</div>', unsafe_allow_html=True)
-            
-            # Display thread replies
-            for _, tweet in thread_df.iloc[1:].iterrows():
-                text = tweet['tweet_insight'] if pd.notna(tweet['tweet_insight']) else tweet['Post text']
-                st.markdown(f'<div class="thread-item"><div class="tweet-text">{text}</div></div>', unsafe_allow_html=True)
-        
-        with col2:
-            # Display metrics
-            metrics = get_thread_metrics(thread_df, thread_df.iloc[0].name)
-            st.markdown("""
-                <div style="background-color: rgba(128, 128, 128, 0.05); padding: 12px; border-radius: 8px;">
-                    <h5 style="margin: 0 0 8px 0; font-size: 0.9em; color: #666;">Engagement Metrics</h5>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(f"""
-                <div class="metrics-container" style="flex-direction: column;">
-                    <div class="metric-box">
-                        <strong>👁️ Impressions</strong><br>{metrics['Impressions']:,}
-                    </div>
-                    <div class="metric-box">
-                        <strong>❤️ Likes</strong><br>{metrics['Likes']:,}
-                    </div>
-                    <div class="metric-box">
-                        <strong>🔄 Reposts</strong><br>{metrics['Reposts']:,}
-                    </div>
-                    <div class="metric-box">
-                        <strong>💬 Replies</strong><br>{metrics['Replies']:,}
-                    </div>
-                </div>
-                </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+    main_tweet = thread_df.iloc[0]
+    main_tweet['thread_df'] = thread_df
+    main_tweet['thread_replies'] = thread_df.iloc[1:].to_dict('records')
+    display_tweet_card(main_tweet, is_thread=True)
 
 def main():
     st.markdown('''
@@ -301,20 +242,17 @@ def main():
     
     # Filter and sort data
     if view_mode == "Threads Only":
-        # Group by thread and calculate thread start date
         thread_starts = df[df['is_thread_start']].copy()
         if sort_by == 'Date':
             thread_starts = thread_starts.sort_values('Date', ascending=ascending)
         else:
-            # For other metrics, we need to sum up the thread totals
             numeric_metrics = ['Impressions', 'Likes', 'Engagements', 'Bookmarks', 
                              'Share', 'Replies', 'Reposts', 'Profile visits']
             thread_metrics = df[['thread_id'] + numeric_metrics].groupby('thread_id').sum().reset_index()
-            # Merge while keeping all original columns from thread_starts
             thread_starts = thread_starts.merge(
                 thread_metrics[['thread_id', sort_by]], 
                 on='thread_id',
-                suffixes=('', '_sum')  # Changed suffixes to avoid _y suffix
+                suffixes=('', '_sum')
             )
             thread_starts = thread_starts.sort_values(sort_by + '_sum', ascending=ascending)
         
@@ -326,77 +264,7 @@ def main():
         # Display individual tweets
         df_sorted = df.sort_values(by=sort_by, ascending=ascending)
         for _, row in df_sorted.iterrows():
-            with st.container():
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    # Date with new style
-                    st.markdown(
-                        f'<div class="date-display">{row["Date"].strftime("%B %d, %Y")}</div>',
-                        unsafe_allow_html=True
-                    )
-                    
-                    # Metadata container with 3 columns
-                    meta_col1, meta_col2, meta_col3 = st.columns(3)
-                    
-                    with meta_col1:
-                        if row['is_thread_start']:
-                            st.markdown('<span class="metadata-tag thread-indicator">🧵 Thread</span>', unsafe_allow_html=True)
-                    
-                    with meta_col2:
-                        if pd.notna(row["tweet_type"]):
-                            st.markdown(f'<span class="metadata-tag tweet-type-tag">📝 {row["tweet_type"]}</span>', unsafe_allow_html=True)
-                    
-                    with meta_col3:
-                        if pd.notna(row["arxiv_code"]):
-                            st.markdown(f'<span class="metadata-tag arxiv-tag">📄 {row["arxiv_code"]}</span>', unsafe_allow_html=True)
-                    
-                    # Paper preview if arxiv code exists
-                    if pd.notna(row["arxiv_code"]):
-                        st.markdown('<div class="paper-preview">', unsafe_allow_html=True)
-                        preview_col1, preview_col2 = st.columns(2)
-                        with preview_col1:
-                            st.image(
-                                f"https://arxiv-art.s3.us-west-2.amazonaws.com/{row['arxiv_code']}.png",
-                                use_column_width=True,
-                                caption="Paper visualization"
-                            )
-                        with preview_col2:
-                            st.image(
-                                f"https://arxiv-first-page.s3.us-east-1.amazonaws.com/{row['arxiv_code']}.png",
-                                use_column_width=True,
-                                caption="Paper first page"
-                            )
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    # Tweet text
-                    text = row['tweet_insight'] if pd.notna(row['tweet_insight']) else row['Post text']
-                    st.markdown(f'<div class="tweet-text">{text}</div>', unsafe_allow_html=True)
-                
-                with col2:
-                    # Metrics in a container
-                    st.markdown("""
-                        <div style="background-color: rgba(128, 128, 128, 0.05); padding: 12px; border-radius: 8px;">
-                            <h5 style="margin: 0 0 8px 0; font-size: 0.9em; color: #666;">Engagement Metrics</h5>
-                    """, unsafe_allow_html=True)
-                    
-                    st.markdown(f"""
-                        <div class="metrics-container" style="flex-direction: column;">
-                            <div class="metric-box">
-                                <strong>👁️ Impressions</strong><br>{row['Impressions']:,}
-                            </div>
-                            <div class="metric-box">
-                                <strong>❤️ Likes</strong><br>{row['Likes']:,}
-                            </div>
-                            <div class="metric-box">
-                                <strong>🔄 Reposts</strong><br>{row['Reposts']:,}
-                            </div>
-                            <div class="metric-box">
-                                <strong>💬 Replies</strong><br>{row['Replies']:,}
-                            </div>
-                        </div>
-                        </div>
-                    """, unsafe_allow_html=True)
+            display_tweet_card(row)
 
 if __name__ == "__main__":
     main() 
