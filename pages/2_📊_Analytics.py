@@ -170,6 +170,116 @@ def display_thread(thread_df):
     main_tweet['thread_replies'] = thread_df.iloc[1:].to_dict('records')
     display_tweet_card(main_tweet, is_thread=True)
 
+def plot_tweet_level_chart(df, metrics):
+    """Create a tweet-level visualization showing metrics per tweet."""
+    # Create a copy to avoid modifying original dataframe
+    plot_df = df.copy()
+    
+    # Define truncate_text function first
+    def truncate_text(text, length=100):
+        return text if len(text) <= length else text[:length] + "..."
+    
+    # Aggregate thread metrics
+    thread_metrics = (plot_df[plot_df['thread_id'].notna()]
+                     .groupby('thread_id')[metrics]
+                     .sum()
+                     .reset_index())
+    
+    # Get the first tweet of each thread
+    thread_first_tweets = (plot_df[plot_df['thread_id'].notna()]
+                          .sort_values('Date')
+                          .groupby('thread_id')
+                          .first()
+                          .reset_index())
+    
+    # Merge aggregated metrics with first tweets
+    thread_tweets = thread_first_tweets.merge(
+        thread_metrics,
+        on='thread_id',
+        suffixes=('', '_sum')
+    )
+    
+    # For metrics columns, use the summed values
+    for metric in metrics:
+        thread_tweets[metric] = thread_tweets[f'{metric}_sum']
+        thread_tweets = thread_tweets.drop(f'{metric}_sum', axis=1)
+    
+    # Combine non-thread tweets with aggregated thread tweets
+    plot_df = pd.concat([
+        plot_df[plot_df['thread_id'].isna()],  # Non-thread tweets
+        thread_tweets  # Aggregated thread tweets
+    ]).sort_values('Date')
+    
+    # Prepare hover text - ensure we get the first tweet's text for threads
+    plot_df['hover_text'] = plot_df.apply(
+        lambda x: (
+            x['tweet_insight'] if pd.notna(x.get('tweet_insight')) 
+            else (x['Post text'] if pd.isna(x.get('thread_id')) 
+                  else thread_first_tweets.loc[
+                      thread_first_tweets['thread_id'] == x['thread_id'], 
+                      'Post text'
+                  ].iloc[0])
+        ),
+        axis=1
+    )
+    
+    # Truncate the hover text
+    plot_df['hover_text'] = plot_df['hover_text'].apply(truncate_text)
+    
+    fig = go.Figure()
+    
+    for metric in metrics:
+        fig.add_trace(
+            go.Bar(
+                x=plot_df['Date'],
+                y=plot_df[metric],
+                name=metric,
+                hovertemplate=(
+                    f"<b>Tweet {metric}</b><br>" +
+                    "Date: %{x|%Y-%m-%d}<br>" +
+                    "Value: %{y:,}<br>" +
+                    "Tweet: %{customdata[0]}<br>" +
+                    "<extra></extra>"
+                ),
+                customdata=plot_df[['hover_text']].values,
+                width=24*60*60*1000 * 0.8,  # 80% of a day in milliseconds
+                opacity=0.8  # Added transparency
+            )
+        )
+    
+    fig.update_layout(
+        template='plotly_white',
+        height=500,
+        margin=dict(t=30, b=0, l=0, r=0),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        xaxis=dict(
+            title="Publication Date",
+            type='date',
+            tickformat='%Y-%m-%d'
+        ),
+        yaxis_title="Count",
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(
+            color=st.get_option("theme.textColor")
+        ),
+        barmode='group',  # Options: 'group' (side by side) or 'stack' (stacked)
+        bargap=0.15,      # Gap between bars in the same group
+        bargroupgap=0.1   # Gap between bar groups
+    )
+    
+    # Update grid color based on theme
+    fig.update_xaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
+    fig.update_yaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
+    
+    return fig
+
 def main():
     st.markdown('''
         <style>
@@ -191,10 +301,63 @@ def main():
     
     # Controls in a card
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
+    
+    # Date range selector
+    min_date = df['Date'].min().date()
+    max_date = df['Date'].max().date()
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
     
     with col1:
-        # Metrics selection
+        # Quick date range buttons
+        date_range = st.radio(
+            "Quick ranges",
+            ["Last week", "Last month", "Last 3 months", "Last 6 months", "All time"],
+            horizontal=True,
+            index=2  # Set default to "Last 3 months" (index 2 in the list)
+        )
+    
+    # Calculate default dates based on selection
+    today = pd.Timestamp.now().date()
+    if date_range == "Last week":
+        default_start = (today - pd.Timedelta(days=7))
+    elif date_range == "Last month":
+        default_start = (today - pd.Timedelta(days=30))
+    elif date_range == "Last 3 months":
+        default_start = (today - pd.Timedelta(days=90))
+    elif date_range == "Last 6 months":
+        default_start = (today - pd.Timedelta(days=180))
+    else:  # All time
+        default_start = min_date
+    
+    with col2, col3:
+        start_date, end_date = st.columns(2)
+        with start_date:
+            start_date = st.date_input("Start date", 
+                                     value=max(min_date, default_start),
+                                     min_value=min_date,
+                                     max_value=max_date)
+        with end_date:
+            end_date = st.date_input("End date",
+                                   value=max_date,
+                                   min_value=min_date,
+                                   max_value=max_date)
+    
+    # Filter dataframe based on date range
+    mask = (df['Date'].dt.date >= start_date) & (df['Date'].dt.date <= end_date)
+    filtered_df = df[mask].copy()
+    
+    # Metrics selection
+    col1, col2 = st.columns(2)
+    with col1:
+        view_type = st.radio(
+            "Chart Type",
+            ["Timeline View", "Tweet-level View"],
+            horizontal=True,
+            key="chart_view_type"
+        )
+    
+    with col2:
         selected_metrics = st.multiselect(
             "Select metrics to display",
             ['Impressions', 'Likes', 'Engagements', 'Bookmarks', 
@@ -202,22 +365,24 @@ def main():
             default=['Impressions', 'Likes', 'Engagements']
         )
     
-    with col2:
-        # Time aggregation
-        time_agg = st.selectbox(
-            "Time aggregation",
-            ["Daily", "Weekly", "Monthly"]
-        )
     st.markdown('</div>', unsafe_allow_html=True)
     
     # Time series chart in a card
     if selected_metrics:
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.plotly_chart(
-            plot_time_series(df, selected_metrics),
-            use_container_width=True,
-            config={'displayModeBar': False}
-        )
+        
+        if view_type == "Timeline View":
+            st.plotly_chart(
+                plot_time_series(filtered_df, selected_metrics),
+                use_container_width=True,
+                config={'displayModeBar': False}
+            )
+        else:  # Tweet-level View
+            st.plotly_chart(
+                plot_tweet_level_chart(filtered_df, selected_metrics),
+                use_container_width=True,
+                config={'displayModeBar': False}
+            )
         st.markdown('</div>', unsafe_allow_html=True)
     
     # Tweet Gallery
@@ -240,15 +405,15 @@ def main():
         ascending = st.checkbox("Ascending order", value=False)
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Filter and sort data
+    # Use filtered_df for the gallery display
     if view_mode == "Threads Only":
-        thread_starts = df[df['is_thread_start']].copy()
+        thread_starts = filtered_df[filtered_df['is_thread_start']].copy()
         if sort_by == 'Date':
             thread_starts = thread_starts.sort_values('Date', ascending=ascending)
         else:
             numeric_metrics = ['Impressions', 'Likes', 'Engagements', 'Bookmarks', 
                              'Share', 'Replies', 'Reposts', 'Profile visits']
-            thread_metrics = df[['thread_id'] + numeric_metrics].groupby('thread_id').sum().reset_index()
+            thread_metrics = filtered_df[['thread_id'] + numeric_metrics].groupby('thread_id').sum().reset_index()
             thread_starts = thread_starts.merge(
                 thread_metrics[['thread_id', sort_by]], 
                 on='thread_id',
@@ -256,13 +421,11 @@ def main():
             )
             thread_starts = thread_starts.sort_values(sort_by + '_sum', ascending=ascending)
         
-        # Display threads
         for _, thread_start in thread_starts.iterrows():
-            thread_tweets = df[df['thread_id'] == thread_start['thread_id']]
+            thread_tweets = filtered_df[filtered_df['thread_id'] == thread_start['thread_id']]
             display_thread(thread_tweets)
     else:
-        # Display individual tweets
-        df_sorted = df.sort_values(by=sort_by, ascending=ascending)
+        df_sorted = filtered_df.sort_values(by=sort_by, ascending=ascending)
         for _, row in df_sorted.iterrows():
             display_tweet_card(row)
 
