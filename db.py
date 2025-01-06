@@ -151,4 +151,22 @@ def get_daily_stats(table_name, start_date=None, end_date=None):
     """
     
     conn = get_db_connection()
+    return pd.read_sql(query, conn)
+
+def load_workflow_runs(start_date=None, end_date=None):
+    """Load workflow runs with optional date filtering."""
+    query = "SELECT * FROM workflow_runs"
+    conditions = []
+    
+    if start_date:
+        conditions.append(f"tstp >= '{start_date}'")
+    if end_date:
+        conditions.append(f"tstp <= '{end_date}'")
+    
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += " ORDER BY tstp DESC"
+    
+    conn = get_db_connection()
     return pd.read_sql(query, conn) 
