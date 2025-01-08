@@ -169,4 +169,113 @@ def load_workflow_runs(start_date=None, end_date=None):
     query += " ORDER BY tstp DESC"
     
     conn = get_db_connection()
+    return pd.read_sql(query, conn)
+
+def load_token_usage_logs(start_date=None, end_date=None):
+    """Load token usage logs with optional date filtering."""
+    query = "SELECT * FROM token_usage_logs"
+    conditions = []
+    
+    if start_date:
+        conditions.append(f"tstp >= '{start_date}'")
+    if end_date:
+        conditions.append(f"tstp <= '{end_date}'")
+    
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += " ORDER BY tstp DESC"
+    
+    conn = get_db_connection()
+    return pd.read_sql(query, conn)
+
+def get_model_stats(start_date=None, end_date=None):
+    """Get aggregated stats per model."""
+    query = """
+    SELECT 
+        model_name,
+        COUNT(*) as total_runs,
+        SUM(prompt_tokens) as total_prompt_tokens,
+        SUM(completion_tokens) as total_completion_tokens,
+        SUM(prompt_cost) as total_prompt_cost,
+        SUM(completion_cost) as total_completion_cost,
+        SUM(prompt_cost + completion_cost) as total_cost
+    FROM token_usage_logs
+    """
+    conditions = []
+    
+    if start_date:
+        conditions.append(f"tstp >= '{start_date}'")
+    if end_date:
+        conditions.append(f"tstp <= '{end_date}'")
+    
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += """
+    GROUP BY model_name
+    ORDER BY total_cost DESC
+    """
+    
+    conn = get_db_connection()
+    return pd.read_sql(query, conn)
+
+def get_process_stats(start_date=None, end_date=None):
+    """Get aggregated stats per process."""
+    query = """
+    SELECT 
+        process_id,
+        COUNT(*) as total_runs,
+        SUM(prompt_tokens) as total_prompt_tokens,
+        SUM(completion_tokens) as total_completion_tokens,
+        SUM(prompt_cost) as total_prompt_cost,
+        SUM(completion_cost) as total_completion_cost,
+        SUM(prompt_cost + completion_cost) as total_cost
+    FROM token_usage_logs
+    """
+    conditions = []
+    
+    if start_date:
+        conditions.append(f"tstp >= '{start_date}'")
+    if end_date:
+        conditions.append(f"tstp <= '{end_date}'")
+    
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += """
+    GROUP BY process_id
+    ORDER BY total_cost DESC
+    """
+    
+    conn = get_db_connection()
+    return pd.read_sql(query, conn)
+
+def get_daily_cost_stats(start_date=None, end_date=None):
+    """Get daily cost statistics."""
+    query = """
+    SELECT 
+        DATE(tstp) as date,
+        SUM(prompt_cost) as prompt_cost,
+        SUM(completion_cost) as completion_cost,
+        SUM(prompt_cost + completion_cost) as total_cost,
+        COUNT(*) as total_runs
+    FROM token_usage_logs
+    """
+    conditions = []
+    
+    if start_date:
+        conditions.append(f"tstp >= '{start_date}'")
+    if end_date:
+        conditions.append(f"tstp <= '{end_date}'")
+    
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += """
+    GROUP BY DATE(tstp)
+    ORDER BY date
+    """
+    
+    conn = get_db_connection()
     return pd.read_sql(query, conn) 
