@@ -33,17 +33,18 @@ def main():
     
     # Feature cards
     col1, col2 = st.columns(2)
+    col3, col4 = st.columns(2)
     
     with col1:
         st.markdown("""
         <div class="feature-card">
-            <h3>🖼️ Image Gallery</h3>
-            <p>Browse, view, and manage your LLMpedia image collection. Features include:</p>
+            <h3>📊 Analytics Dashboard</h3>
+            <p>Comprehensive analytics and monitoring:</p>
             <ul>
-                <li>Grid view of all images</li>
-                <li>Sort by date or Arxiv code</li>
-                <li>Delete unwanted images</li>
-                <li>Pagination for easy navigation</li>
+                <li>Visit logs and user activity tracking</li>
+                <li>Q&A interaction analysis</li>
+                <li>Error monitoring and tracking</li>
+                <li>Top entrypoint analysis</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -51,13 +52,41 @@ def main():
     with col2:
         st.markdown("""
         <div class="feature-card">
-            <h3>📊 Analytics Dashboard</h3>
-            <p>Analyze your Twitter engagement data with interactive visualizations:</p>
+            <h3>🔄 Workflow Management</h3>
+            <p>Monitor and analyze workflow performance:</p>
             <ul>
-                <li>Time series analysis of engagement metrics</li>
-                <li>Customizable metric selection</li>
-                <li>Tweet gallery with engagement stats</li>
-                <li>Sort and filter capabilities</li>
+                <li>Workflow run history and status</li>
+                <li>Process execution tracking</li>
+                <li>Performance metrics visualization</li>
+                <li>Error rate monitoring</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>📡 Telemetry Insights</h3>
+            <p>Detailed system performance metrics:</p>
+            <ul>
+                <li>Hourly and daily usage patterns</li>
+                <li>User interaction tracking</li>
+                <li>System health monitoring</li>
+                <li>Performance bottleneck detection</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>💰 Cost Analytics</h3>
+            <p>Comprehensive cost tracking and analysis:</p>
+            <ul>
+                <li>Model usage cost breakdown</li>
+                <li>Token consumption metrics</li>
+                <li>Daily cost tracking</li>
+                <li>Process-level cost analysis</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)

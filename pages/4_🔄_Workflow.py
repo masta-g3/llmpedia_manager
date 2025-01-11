@@ -89,48 +89,85 @@ def plot_step_performance(df):
     return fig
 
 def plot_timeline(df):
-    """Create a timeline visualization of workflow runs."""
+    """Create a timeline visualization of workflow runs with step-based y-axis."""
     # Prepare data for timeline
     timeline_data = df.copy()
-    timeline_data['run_group'] = timeline_data['tstp'].dt.floor('h')
     
-    # Calculate success rate per hour
-    hourly_stats = timeline_data.groupby('run_group').agg({
-        'status': lambda x: (x == 'success').mean() * 100,
-        'id': 'count'
-    }).reset_index()
+    # Group runs into workflow executions (clusters)
+    timeline_data = timeline_data.sort_values('tstp')
+    timeline_data['time_diff'] = timeline_data['tstp'].diff()
+    timeline_data['workflow_execution'] = (timeline_data['time_diff'] > pd.Timedelta(minutes=30)).cumsum()
+    
+    # Get ordered list of steps for y-axis (sorted by step number)
+    step_df = pd.DataFrame({'step_name': timeline_data['step_name'].unique()})
+    step_df['step_num'] = step_df['step_name'].str.extract('(\d+)').astype(float)
+    step_order = step_df.sort_values('step_num')['step_name'].tolist()
     
     fig = go.Figure()
     
-    # Add success rate line
-    fig.add_trace(go.Scatter(
-        x=hourly_stats['run_group'],
-        y=hourly_stats['status'],
-        mode='lines',
-        line=dict(color='rgba(55, 83, 109, 0.7)', width=2),
-        name='Success Rate',
-        hovertemplate='Time: %{x}<br>Success Rate: %{y:.1f}%<br>Runs: %{customdata}<extra></extra>',
-        customdata=hourly_stats['id']
-    ))
+    # Add workflow execution clusters with alternating colors
+    for workflow_id, workflow_group in timeline_data.groupby('workflow_execution'):
+        if len(workflow_group) > 0:
+            start_time = workflow_group['tstp'].min()
+            end_time = workflow_group['tstp'].max()
+            time_padding = pd.Timedelta(minutes=5)
+            
+            # Add shaded region for workflow execution
+            fig.add_vrect(
+                x0=start_time - time_padding,
+                x1=end_time + time_padding,
+                fillcolor=f'rgba(200, 200, 200, {0.1 if workflow_id % 2 == 0 else 0.2})',
+                layer='below',
+                line_width=0,
+                showlegend=False
+            )
+        
+        # Add all runs in this workflow with color indicating status
+        fig.add_trace(go.Scatter(
+            x=workflow_group['tstp'],
+            y=workflow_group['step_name'],
+            mode='markers',
+            marker=dict(
+                color=workflow_group['status'].map({'success': 'rgba(46, 184, 46, 0.7)', 'error': 'rgba(255, 0, 0, 0.7)'}),
+                size=10,
+                symbol='circle'
+            ),
+            name=f'Execution {workflow_id + 1}',
+            hovertemplate='Time: %{x}<br>Step: %{y}<br>Status: %{customdata}<extra></extra>',
+            customdata=workflow_group['status'],
+            showlegend=workflow_id == 0  # Show legend only for first workflow
+        ))
     
     fig.update_layout(
         template='plotly_white',
-        height=300,
-        margin=dict(t=30, b=0, l=0, r=0),
+        height=max(300, len(step_order) * 25),  # Reduced height per step from 40 to 25
+        margin=dict(t=30, b=0, l=150, r=0),  # Increased left margin for step names
         xaxis=dict(
             title="",
-            showgrid=False
+            showgrid=True,
+            gridcolor='rgba(128,128,128,0.1)'
         ),
         yaxis=dict(
-            title="Success Rate (%)",
+            title="",
             showgrid=True,
             gridcolor='rgba(128,128,128,0.1)',
-            range=[0, 100]
+            categoryorder='array',
+            categoryarray=step_order,  # Use numerically sorted step order
+            tickmode='array',
+            ticktext=step_order,
+            tickvals=step_order
         ),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         font=dict(color=st.get_option("theme.textColor")),
-        showlegend=False
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
     )
     
     return fig

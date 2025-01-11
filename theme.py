@@ -148,10 +148,6 @@ def apply_theme():
             padding-top: 0.5rem !important;
         }
         
-        div[data-testid="stToolbar"] {
-            display: none;
-        }
-        
         /* Scrollbar styling */
         ::-webkit-scrollbar {
             width: 6px;
