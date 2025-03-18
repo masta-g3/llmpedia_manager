@@ -13,7 +13,7 @@ from db import (
 )
 
 # Set page config
-st.set_page_config(layout="wide", page_title="LLM Tweet Analytics")
+st.set_page_config(layout="wide", page_title="X Discussions")
 
 # Apply theme
 apply_theme()
@@ -174,7 +174,7 @@ def plot_engagement_distribution(df: pd.DataFrame, metric: str) -> go.Figure:
     return fig
 
 def main():
-    st.title("🐦 LLM Tweet Analytics")
+    st.title("🐦 X Discussions")
     
     # Time range selector
     col1, col2 = st.columns([2, 1])

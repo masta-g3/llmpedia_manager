@@ -388,4 +388,44 @@ def get_top_authors(limit: int = 10, start_date=None, end_date=None) -> pd.DataF
     """ % limit
     
     conn = get_db_connection()
-    return pd.read_sql(query, conn) 
+    return pd.read_sql(query, conn)
+
+def get_pending_tweet_replies(limit=10):
+    """Load pending tweet replies for approval."""
+    query = f"""
+    SELECT 
+        id, 
+        tstp, 
+        selected_tweet, 
+        response, 
+        meta_data,
+        approval_status
+    FROM tweet_replies
+    WHERE approval_status = 'pending'
+    ORDER BY tstp DESC
+    LIMIT {limit}
+    """
+    
+    conn = get_db_connection()
+    return pd.read_sql(query, conn)
+
+def update_tweet_reply_status(tweet_id, status):
+    """Update the status of a tweet reply."""
+    if status not in ['approved', 'rejected']:
+        return False
+    
+    try:
+        conn = get_db_connection()
+        with conn.connect() as connection:
+            result = connection.execute(
+                f"""
+                UPDATE tweet_replies
+                SET approval_status = '{status}', 
+                    updated_at = NOW()
+                WHERE id = {tweet_id}
+                """
+            )
+            return True
+    except Exception as e:
+        print(f"Error updating tweet reply status: {e}")
+        return False 

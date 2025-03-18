@@ -8,7 +8,7 @@ from theme import apply_theme
 from data import load_tweet_analytics, get_thread_metrics
 
 # Set page config
-st.set_page_config(layout="wide", page_title="Analytics Dashboard")
+st.set_page_config(layout="wide", page_title="Post Analytics")
 
 # Apply theme
 apply_theme()
@@ -293,7 +293,7 @@ def main():
     ''', unsafe_allow_html=True)
     
     st.markdown('<div class="main-header">', unsafe_allow_html=True)
-    st.title("📊 Twitter Analytics Dashboard")
+    st.title("📊 Post Analytics")
     st.markdown("</div>", unsafe_allow_html=True)
     
     # Load data
