@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import streamlit as st
 
 # Database connection parameters
@@ -417,14 +417,14 @@ def update_tweet_reply_status(tweet_id, status):
     try:
         conn = get_db_connection()
         with conn.connect() as connection:
-            result = connection.execute(
-                f"""
+            query = text("""
                 UPDATE tweet_replies
-                SET approval_status = '{status}', 
-                    updated_at = NOW()
-                WHERE id = {tweet_id}
-                """
-            )
+                SET approval_status = :status, 
+                    tstp = NOW()
+                WHERE id = :tweet_id
+                """)
+            result = connection.execute(query, {"status": status, "tweet_id": tweet_id})
+            connection.commit()
             return True
     except Exception as e:
         print(f"Error updating tweet reply status: {e}")
