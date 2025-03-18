@@ -11,7 +11,7 @@ from theme import apply_theme
 PROJECT_PATH = os.environ.get("PROJECT_PATH", os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_PATH)
 
-from db import get_pending_tweet_replies, update_tweet_reply_status
+from db import get_pending_tweet_replies, update_tweet_reply_status, update_tweet_reply_text_and_status
 
 st.set_page_config(
     page_title="Pending Posts",
@@ -69,6 +69,24 @@ st.markdown("""
         font-size: 0.8em;
         font-weight: 600;
         margin-right: 10px;
+    }
+    
+    /* Edit functionality styles */
+    .stTextArea textarea {
+        background-color: var(--highlight-background-color);
+        border: 1px solid var(--primary-color);
+        color: var(--text-color);
+        font-size: 0.95em;
+        padding: 10px;
+        min-height: 120px;
+    }
+    
+    .edit-info {
+        background-color: rgba(255, 193, 7, 0.15);
+        border-left: 4px solid #ffc107;
+        padding: 10px;
+        margin-top: 10px;
+        border-radius: 5px;
     }
     
     /* Set light/dark mode variables based on Streamlit's theme */
@@ -244,8 +262,15 @@ def display_tweet_card(tweet_row):
         with st.expander("Show Context"):
             st.write(meta_data["context"])
     
+    # Add edit functionality
+    with st.expander("Edit Reply"):
+        edited_response = st.text_area("Edit generated reply", tweet_row["response"], key=f"edit_{tweet_row['id']}")
+        was_edited = edited_response != tweet_row["response"]
+        if was_edited:
+            st.info("Reply has been modified. Click 'Approve with Edit' to save changes.")
+    
     # Approval buttons
-    col1, col2 = st.columns([1, 5])
+    col1, col2, col3 = st.columns([1, 1, 3])
     
     with col1:
         if st.button("✅ Approve", type="primary", key=f"approve_{tweet_row['id']}"):
@@ -256,6 +281,14 @@ def display_tweet_card(tweet_row):
                 st.error("Failed to approve tweet.")
     
     with col2:
+        if was_edited and st.button("📝 Approve with Edit", type="primary", key=f"approve_edit_{tweet_row['id']}"):
+            if update_tweet_reply_text_and_status(tweet_row["id"], edited_response, "approved"):
+                st.success("Tweet edited and approved successfully!")
+                st.rerun()
+            else:
+                st.error("Failed to edit and approve tweet.")
+    
+    with col3:
         if st.button("❌ Reject", type="secondary", key=f"reject_{tweet_row['id']}"):
             if update_tweet_reply_status(tweet_row["id"], "rejected"):
                 st.success("Tweet rejected successfully!")

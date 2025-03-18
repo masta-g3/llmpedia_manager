@@ -428,4 +428,26 @@ def update_tweet_reply_status(tweet_id, status):
             return True
     except Exception as e:
         print(f"Error updating tweet reply status: {e}")
+        return False
+
+def update_tweet_reply_text_and_status(tweet_id, new_text, status='approved'):
+    """Update both the response text and status of a tweet reply."""
+    if status not in ['approved', 'rejected']:
+        return False
+    
+    try:
+        conn = get_db_connection()
+        with conn.connect() as connection:
+            query = text("""
+                UPDATE tweet_replies
+                SET approval_status = :status,
+                    response = :new_text,
+                    tstp = NOW()
+                WHERE id = :tweet_id
+                """)
+            result = connection.execute(query, {"status": status, "new_text": new_text, "tweet_id": tweet_id})
+            connection.commit()
+            return True
+    except Exception as e:
+        print(f"Error updating tweet reply text and status: {e}")
         return False 
