@@ -129,8 +129,8 @@ def plot_timeline(df):
             mode='markers',
             marker=dict(
                 color=workflow_group['status'].map({'success': 'rgba(46, 184, 46, 0.7)', 'error': 'rgba(255, 0, 0, 0.7)'}),
-                size=10,
-                symbol='circle'
+                size=8,
+                symbol=workflow_group['status'].apply(lambda x: 'x' if x == 'error' else 'circle')
             ),
             name=f'Execution {workflow_id + 1}',
             hovertemplate='Time: %{x}<br>Step: %{y}<br>Status: %{customdata}<extra></extra>',

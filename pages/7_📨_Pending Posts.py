@@ -6,12 +6,13 @@ from datetime import datetime
 import json
 from utils import init_auth_sidebar
 from theme import apply_theme
+import llm
 
 # Add project path to sys.path
 PROJECT_PATH = os.environ.get("PROJECT_PATH", os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_PATH)
 
-from db import get_pending_tweet_replies, update_tweet_reply_status, update_tweet_reply_text_and_status
+from db import get_pending_tweet_replies, update_tweet_reply_status, update_tweet_reply_text_and_status, delete_tweet_reply
 
 st.set_page_config(
     page_title="Pending Posts",
@@ -21,136 +22,6 @@ st.set_page_config(
 
 # Apply theme
 apply_theme()
-
-# Custom CSS for card styling with theme-awareness
-st.markdown("""
-<style>
-    .tweet-card {
-        background-color: var(--background-color);
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        border: 1px solid var(--border-color);
-    }
-    
-    .card-header {
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 10px;
-        margin-bottom: 15px;
-    }
-    
-    .card-meta {
-        color: var(--text-color-secondary);
-        font-size: 0.9em;
-        margin-bottom: 15px;
-    }
-    
-    .original-tweet {
-        background-color: var(--background-color-secondary);
-        border-left: 4px solid var(--border-color-accent);
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 15px;
-    }
-    
-    .generated-reply {
-        background-color: var(--highlight-background-color);
-        border-left: 4px solid var(--primary-color);
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 15px;
-    }
-    
-    .response-type {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.8em;
-        font-weight: 600;
-        margin-right: 10px;
-    }
-    
-    /* Edit functionality styles */
-    .stTextArea textarea {
-        background-color: var(--highlight-background-color);
-        border: 1px solid var(--primary-color);
-        color: var(--text-color);
-        font-size: 0.95em;
-        padding: 10px;
-        min-height: 120px;
-    }
-    
-    .edit-info {
-        background-color: rgba(255, 193, 7, 0.15);
-        border-left: 4px solid #ffc107;
-        padding: 10px;
-        margin-top: 10px;
-        border-radius: 5px;
-    }
-    
-    /* Set light/dark mode variables based on Streamlit's theme */
-    :root {
-        --background-color: #ffffff;
-        --background-color-secondary: #f8f9fa;
-        --text-color: #262730;
-        --text-color-secondary: #666666;
-        --border-color: #f0f0f0;
-        --border-color-accent: #6c757d;
-        --highlight-background-color: #e8f4f8;
-        --primary-color: #0096c7;
-    }
-    
-    /* Dark mode variables */
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --background-color: #1e1e1e;
-            --background-color-secondary: #2d2d2d;
-            --text-color: #fafafa;
-            --text-color-secondary: #a0a0a0;
-            --border-color: #3d3d3d;
-            --border-color-accent: #8c8c8c;
-            --highlight-background-color: #2a3b47;
-            --primary-color: #00b4d8;
-        }
-    }
-    
-    /* Response type styles with better contrast for both modes */
-    .type-academic {
-        background-color: rgba(0, 102, 204, 0.15);
-        color: var(--primary-color);
-    }
-    
-    .type-funny {
-        background-color: rgba(255, 102, 0, 0.15);
-        color: #ff6600;
-    }
-    
-    .type-common-sense {
-        background-color: rgba(0, 204, 102, 0.15);
-        color: #00cc66;
-    }
-    
-    .type-unknown {
-        background-color: rgba(128, 128, 128, 0.15);
-        color: var(--text-color-secondary);
-    }
-    
-    .button-container {
-        display: flex;
-        gap: 10px;
-    }
-    
-    /* Ensure text is visible in both themes */
-    .tweet-card h3, .tweet-card h4 {
-        color: var(--text-color);
-    }
-    
-    .original-tweet, .generated-reply {
-        color: var(--text-color);
-    }
-</style>
-""", unsafe_allow_html=True)
 
 # Initialize authentication sidebar
 is_authenticated = init_auth_sidebar()
@@ -163,56 +34,31 @@ st.title("📨 Pending Posts")
 # Get post_id from URL parameter
 post_id = st.query_params.get("post_id", [None])[0]
 
-# Function to get current theme and set JS variables
-def inject_theme_detection():
-    # Detect theme script
-    st.markdown("""
-    <script>
-        // Function to detect dark mode and set CSS variables
-        function updateThemeVariables() {
-            const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            
-            // Alternative detection method for Streamlit specifically
-            const darkElements = document.querySelectorAll('.st-dark');
-            const isStDark = darkElements.length > 0;
-            
-            // Set variables based on theme
-            if (isDark || isStDark) {
-                document.documentElement.style.setProperty('--background-color', '#1e1e1e');
-                document.documentElement.style.setProperty('--background-color-secondary', '#2d2d2d');
-                document.documentElement.style.setProperty('--text-color', '#fafafa');
-                document.documentElement.style.setProperty('--text-color-secondary', '#a0a0a0');
-                document.documentElement.style.setProperty('--border-color', '#3d3d3d');
-                document.documentElement.style.setProperty('--border-color-accent', '#8c8c8c');
-                document.documentElement.style.setProperty('--highlight-background-color', '#2a3b47');
-                document.documentElement.style.setProperty('--primary-color', '#00b4d8');
-            } else {
-                document.documentElement.style.setProperty('--background-color', '#ffffff');
-                document.documentElement.style.setProperty('--background-color-secondary', '#f8f9fa');
-                document.documentElement.style.setProperty('--text-color', '#262730');
-                document.documentElement.style.setProperty('--text-color-secondary', '#666666');
-                document.documentElement.style.setProperty('--border-color', '#f0f0f0');
-                document.documentElement.style.setProperty('--border-color-accent', '#6c757d');
-                document.documentElement.style.setProperty('--highlight-background-color', '#e8f4f8');
-                document.documentElement.style.setProperty('--primary-color', '#0096c7');
-            }
-        }
-        
-        // Run on load
-        updateThemeVariables();
-        
-        // Watch for theme changes
-        if (window.matchMedia) {
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateThemeVariables);
-        }
-        
-        // Additional check for Streamlit theme changes (run periodically)
-        setInterval(updateThemeVariables, 1000);
-    </script>
-    """, unsafe_allow_html=True)
-
-# Inject theme detection logic
-inject_theme_detection()
+@st.dialog("Confirm Deletion")
+def confirm_delete_dialog(tweet_id, tweet_text):
+    st.markdown('<div class="dialog-content">', unsafe_allow_html=True)
+    st.warning("⚠️ This action cannot be undone")
+    st.write("Are you sure you want to delete this tweet?")
+    
+    st.markdown('<div class="tweet-preview">', unsafe_allow_html=True)
+    st.markdown(f"**Original tweet:** {tweet_text[:100]}{'...' if len(tweet_text) > 100 else ''}")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        if st.button("Yes, Delete", type="primary", key=f"confirm_delete_btn_{tweet_id}"):
+            if delete_tweet_reply(tweet_id):
+                st.session_state.delete_success = True
+                st.rerun()
+            else:
+                st.error("Failed to delete tweet.")
+    
+    with col2:
+        if st.button("Cancel", key=f"cancel_delete_btn_{tweet_id}"):
+            st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Function to display tweet details in card format
 def display_tweet_card(tweet_row):
@@ -257,20 +103,58 @@ def display_tweet_card(tweet_row):
     </div>
     """, unsafe_allow_html=True)
     
+    # Extract context if available
+    context = meta_data.get("context", "") if meta_data else ""
+    
     # Context expander (using Streamlit components since it can't be done with HTML)
-    if meta_data and "context" in meta_data and meta_data["context"]:
+    if context:
         with st.expander("Show Context"):
-            st.write(meta_data["context"])
+            st.write(context)
     
     # Add edit functionality
     with st.expander("Edit Reply"):
+        # Manual editing
         edited_response = st.text_area("Edit generated reply", tweet_row["response"], key=f"edit_{tweet_row['id']}")
+        
+        # Divider
+        st.markdown('<div class="ai-divider"></div>', unsafe_allow_html=True)
+        
+        # LLM-assisted editing
+        st.markdown('<h3 class="ai-editing-header">AI-Assisted Editing</h3>', unsafe_allow_html=True)
+        
+        edit_col1, edit_col2 = st.columns([3, 1])
+        
+        with edit_col1:
+            edit_instructions = st.text_area("Provide instructions for AI to edit the reply", 
+                                         placeholder="e.g., Make it more concise and professional", 
+                                         key=f"instructions_{tweet_row['id']}", 
+                                         height=100)
+        
+        with edit_col2:
+            st.markdown('<div class="ai-edit-button">', unsafe_allow_html=True)
+            ai_edit_button = st.button("✨ Apply AI Edit", key=f"apply_ai_{tweet_row['id']}")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        if ai_edit_button:
+            with st.spinner("Applying AI edits..."):
+                # Call the LLM to edit the reply
+                ai_edited_response = llm.edit_tweet_reply(
+                    original_tweet=tweet_row["selected_tweet"],
+                    generated_reply=tweet_row["response"],
+                    edit_instructions=edit_instructions,
+                    context=context
+                )
+                # Update the text area with AI-edited response
+                st.session_state[f"edit_{tweet_row['id']}"] = ai_edited_response
+                st.rerun()
+        
+        # Check if edited
         was_edited = edited_response != tweet_row["response"]
         if was_edited:
             st.info("Reply has been modified. Click 'Approve with Edit' to save changes.")
     
     # Approval buttons
-    col1, col2, col3 = st.columns([1, 1, 3])
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
     
     with col1:
         if st.button("✅ Approve", type="primary", key=f"approve_{tweet_row['id']}"):
@@ -295,6 +179,17 @@ def display_tweet_card(tweet_row):
                 st.rerun()
             else:
                 st.error("Failed to reject tweet.")
+    
+    with col4:
+        if st.button("🗑️ Delete", type="secondary", key=f"delete_{tweet_row['id']}"):
+            confirm_delete_dialog(tweet_row["id"], tweet_row["selected_tweet"])
+    
+    # Check for deletion success and show message
+    if hasattr(st.session_state, 'delete_success') and st.session_state.delete_success:
+        st.success("Tweet deleted successfully!")
+        # Clear the success flag so the message doesn't persist
+        del st.session_state.delete_success
+        st.rerun()
     
     st.markdown("<hr style='border-color: var(--border-color);'>", unsafe_allow_html=True)
 

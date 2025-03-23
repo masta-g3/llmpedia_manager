@@ -450,4 +450,20 @@ def update_tweet_reply_text_and_status(tweet_id, new_text, status='approved'):
             return True
     except Exception as e:
         print(f"Error updating tweet reply text and status: {e}")
+        return False
+
+def delete_tweet_reply(tweet_id):
+    """Delete a tweet reply from the database."""
+    try:
+        conn = get_db_connection()
+        with conn.connect() as connection:
+            query = text("""
+                DELETE FROM tweet_replies
+                WHERE id = :tweet_id
+                """)
+            result = connection.execute(query, {"tweet_id": tweet_id})
+            connection.commit()
+            return True
+    except Exception as e:
+        print(f"Error deleting tweet reply: {e}")
         return False 
