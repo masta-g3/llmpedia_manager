@@ -26,7 +26,7 @@ apply_theme()
 # Initialize authentication sidebar
 is_authenticated = init_auth_sidebar()
 if not is_authenticated:
-    st.error("⚠️ Please login using the sidebar to access tweet approval")
+    st.error("⚠️ Please login using the sidebar to access post approval")
     st.stop()
 
 st.title("📨 Pending Posts")
@@ -38,10 +38,10 @@ post_id = st.query_params.get("post_id", [None])[0]
 def confirm_delete_dialog(tweet_id, tweet_text):
     st.markdown('<div class="dialog-content">', unsafe_allow_html=True)
     st.warning("⚠️ This action cannot be undone")
-    st.write("Are you sure you want to delete this tweet?")
+    st.write("Are you sure you want to delete this post?")
     
     st.markdown('<div class="tweet-preview">', unsafe_allow_html=True)
-    st.markdown(f"**Original tweet:** {tweet_text[:100]}{'...' if len(tweet_text) > 100 else ''}")
+    st.markdown(f"**Original post:** {tweet_text[:100]}{'...' if len(tweet_text) > 100 else ''}")
     st.markdown('</div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns([1, 1])
@@ -52,7 +52,7 @@ def confirm_delete_dialog(tweet_id, tweet_text):
                 st.session_state.delete_success = True
                 st.rerun()
             else:
-                st.error("Failed to delete tweet.")
+                st.error("Failed to delete post.")
     
     with col2:
         if st.button("Cancel", key=f"cancel_delete_btn_{tweet_id}"):
@@ -86,7 +86,7 @@ def display_tweet_card(tweet_row):
     st.markdown(f"""
     <div class="tweet-card">
         <div class="card-header">
-            <h3>Tweet #{tweet_row['id']}</h3>
+            <h3>Post #{tweet_row['id']}</h3>
         </div>
         <div class="card-meta">
             <span class="response-type {response_type_class}">{response_type_desc.upper()}</span>
