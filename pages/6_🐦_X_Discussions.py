@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime, timedelta
+import plotly.graph_objects as go
 from utils import init_auth_sidebar
 from theme import apply_theme
+from plots import create_time_series, create_bar_chart, apply_chart_theme
 from db import (
     load_tweet_analysis,
     get_tweet_stats,
@@ -13,7 +13,7 @@ from db import (
 )
 
 # Set page config
-st.set_page_config(layout="wide", page_title="X Discussions")
+st.set_page_config(layout="wide", page_title="Social Media Discussions")
 
 # Apply theme
 apply_theme()
@@ -21,7 +21,7 @@ apply_theme()
 # Initialize authentication sidebar
 is_authenticated = init_auth_sidebar()
 if not is_authenticated:
-    st.error("⚠️ Please login using the sidebar to access tweet analytics")
+    st.error("⚠️ Please login using the sidebar to access social media analytics")
     st.stop()
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -44,10 +44,9 @@ def format_number(num: float) -> str:
 
 def plot_daily_metrics(df: pd.DataFrame) -> go.Figure:
     """Create a multi-line chart for daily metrics."""
-    fig = go.Figure()
-    
+    # Define metrics and their display labels
     metrics = {
-        'tweet_count': 'Tweets',
+        'tweet_count': 'Posts',
         'unique_authors': 'Unique Authors',
         'total_likes': 'Likes',
         'total_reposts': 'Reposts'
@@ -56,43 +55,20 @@ def plot_daily_metrics(df: pd.DataFrame) -> go.Figure:
     colors = ['rgba(55, 83, 109, 0.7)', 'rgba(26, 118, 255, 0.7)', 
               'rgba(78, 121, 167, 0.7)', 'rgba(242, 142, 43, 0.7)']
     
-    for (metric, label), color in zip(metrics.items(), colors):
-        fig.add_trace(go.Scatter(
-            x=df['date'],
-            y=df[metric],
-            name=label,
-            mode='lines',
-            line=dict(width=2, color=color),
-            hovertemplate=f"{label}: %{{y:,.0f}}<br>Date: %{{x|%Y-%m-%d}}<extra></extra>"
-        ))
-    
-    fig.update_layout(
-        template='plotly_white',
+    # Use create_time_series from plots.py with customization
+    return create_time_series(
+        df=df,
+        x_col='date',
+        y_cols=list(metrics.keys()),
+        labels=metrics,
         height=400,
-        margin=dict(t=30, b=0, l=0, r=0),
         xaxis_title="Date",
         yaxis_title="Count",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor")),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
+        use_markers=False
     )
-    
-    fig.update_xaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    fig.update_yaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    
-    return fig
 
 def plot_engagement_distribution(df: pd.DataFrame, metric: str) -> go.Figure:
     """Create a horizontal bar chart of top authors by selected metric."""
-    fig = go.Figure()
-    
     metric_configs = {
         'engagement': {
             'value': (df['total_likes'] * 1 + df['total_reposts'] * 2 + df['total_replies'] * 3) / df['tweet_count'],
@@ -101,7 +77,7 @@ def plot_engagement_distribution(df: pd.DataFrame, metric: str) -> go.Figure:
         },
         'tweets': {
             'value': df['tweet_count'],
-            'title': 'Total Tweets',
+            'title': 'Total Posts',
             'format': ',d'
         },
         'likes': {
@@ -139,42 +115,33 @@ def plot_engagement_distribution(df: pd.DataFrame, metric: str) -> go.Figure:
         axis=1
     )
     
-    fig.add_trace(go.Bar(
-        y=df['display_name'],
-        x=df['metric_value'],
-        orientation='h',
-        marker_color='rgba(55, 83, 109, 0.7)',
-        customdata=df[['tweet_count', 'total_likes', 'total_reposts', 'total_replies', 'total_views']],
-        hovertemplate=(
-            'Author: %{y}<br>' +
-            f'{metric_configs[metric]["title"]}: %{{x:{metric_configs[metric]["format"]}}}<br>' +
-            'Tweets: %{customdata[0]:,d}<br>' +
-            'Likes: %{customdata[1]:,d}<br>' +
-            'Reposts: %{customdata[2]:,d}<br>' +
-            'Replies: %{customdata[3]:,d}<br>' +
-            'Views: %{customdata[4]:,d}<extra></extra>'
-        )
-    ))
-    
-    fig.update_layout(
-        template='plotly_white',
-        height=400,
-        margin=dict(t=30, b=0, l=0, r=0),
-        xaxis_title=metric_configs[metric]['title'],
-        yaxis_title="Author",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor")),
-        showlegend=False
+    # Custom hover template
+    hover_template = (
+        'Author: %{y}<br>' +
+        f'{metric_configs[metric]["title"]}: %{{x:{metric_configs[metric]["format"]}}}<br>' +
+        'Posts: %{customdata[0]:,d}<br>' +
+        'Likes: %{customdata[1]:,d}<br>' +
+        'Reposts: %{customdata[2]:,d}<br>' +
+        'Replies: %{customdata[3]:,d}<br>' +
+        'Views: %{customdata[4]:,d}<extra></extra>'
     )
     
-    fig.update_xaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    fig.update_yaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    
-    return fig
+    # Use horizontal bar chart with customizations
+    return create_bar_chart(
+        df=df,
+        x_col='metric_value',
+        y_col='display_name',
+        color='rgba(55, 83, 109, 0.7)',
+        height=400,
+        xaxis_title=metric_configs[metric]['title'],
+        yaxis_title="Author",
+        horizontal=True,
+        hover_template=hover_template,
+        custom_data=['tweet_count', 'total_likes', 'total_reposts', 'total_replies', 'total_views']
+    )
 
 def main():
-    st.title("🐦 X Discussions")
+    st.title("🐦 Social Media Discussions")
     
     # Time range selector
     col1, col2 = st.columns([2, 1])
@@ -210,7 +177,7 @@ def main():
     with col1:
         st.markdown('''
             <div class="metric-card">
-                <div class="metric-label">Total Tweets</div>
+                <div class="metric-label">Total Posts</div>
                 <div class="metric-value">{:,}</div>
             </div>
         '''.format(int(stats_df['total_tweets'].iloc[0])), unsafe_allow_html=True)
@@ -226,7 +193,7 @@ def main():
     with col3:
         st.markdown('''
             <div class="metric-card">
-                <div class="metric-label">Avg. Likes per Tweet</div>
+                <div class="metric-label">Avg. Likes per Post</div>
                 <div class="metric-value">{:,.1f}</div>
             </div>
         '''.format(stats_df['avg_likes'].iloc[0]), unsafe_allow_html=True)
@@ -250,7 +217,7 @@ def main():
         st.markdown("### Top Authors by Metric")
         metric_options = {
             'engagement': '🎯 Engagement Score',
-            'tweets': '📝 Tweet Count',
+            'tweets': '📝 Post Count',
             'likes': '❤️ Likes',
             'reposts': '🔄 Reposts',
             'replies': '💬 Replies',
@@ -265,12 +232,12 @@ def main():
         st.plotly_chart(plot_engagement_distribution(top_authors, selected_metric), use_container_width=True)
     
     with col2:
-        st.markdown("### Latest Tweet Analysis")
+        st.markdown("### Latest Post Analysis")
         if not analysis_results.empty:
             latest_analysis = analysis_results.iloc[0]
             st.markdown(f"""
 **Analysis Period:** {latest_analysis['start_date'].strftime('%Y-%m-%d')} to {latest_analysis['end_date'].strftime('%Y-%m-%d')}  
-**Unique Tweets:** {latest_analysis['unique_tweets']:,}
+**Unique Posts:** {latest_analysis['unique_tweets']:,}
 
 #### Key Insights:
 {latest_analysis['response']}
@@ -279,7 +246,7 @@ def main():
 {latest_analysis['thinking_process']}
 """)
         else:
-            st.info("No tweet analysis results available for the selected time period.")
+            st.info("No post analysis results available for the selected time period.")
     
     # Detailed tables
     tab1, tab2 = st.tabs(["Top Authors Details", "Analysis History"])
@@ -301,7 +268,7 @@ def main():
             for _, analysis in analysis_results.iterrows():
                 with st.expander(f"Analysis from {analysis['start_date'].strftime('%Y-%m-%d')} to {analysis['end_date'].strftime('%Y-%m-%d')}"):
                     st.markdown(f"""
-**Unique Tweets:** {analysis['unique_tweets']:,}
+**Unique Posts:** {analysis['unique_tweets']:,}
 
 #### Key Insights:
 {analysis['response']}

@@ -55,15 +55,15 @@ def delete_s3_file(file_key):
 
 def main():
     st.markdown('<div class="main-header">', unsafe_allow_html=True)
-    st.title("🖼️ LLMpedia Image Gallery")
+    st.title("🖼️ Image Gallery")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Controls in a card
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Controls in a zen panel
+    st.markdown('<div class="zen-panel">', unsafe_allow_html=True)
     col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
         # Load and sort files
-        if "files_df" not in st.session_state or st.button("🔄 Refresh Gallery"):
+        if "files_df" not in st.session_state or st.button("Refresh Gallery"):
             st.session_state.files_df = list_s3_files()
     
     with col2:
@@ -113,22 +113,22 @@ def main():
             st.markdown(f'<div class="gallery-image">', unsafe_allow_html=True)
             st.image(img_url, use_column_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
-            if st.button(f"View {file['ArxivCode']}", key=f"view_{file['Key']}", type="secondary"):
+            if st.button(f"{file['ArxivCode']}", key=f"view_{file['Key']}"):
                 view_image(file)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Pagination controls in a card
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Pagination controls in a zen panel
+    st.markdown('<div class="zen-panel">', unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 3, 1])
     with col1:
-        if st.button("← Previous", type="secondary") and st.session_state.page_number > 0:
+        if st.button("Previous") and st.session_state.page_number > 0:
             st.session_state.page_number -= 1
             st.rerun()
     with col2:
-        st.markdown(f'<p style="text-align: center">Page {st.session_state.page_number + 1} of {total_pages}</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="text-center">Page {st.session_state.page_number + 1} of {total_pages}</p>', unsafe_allow_html=True)
     with col3:
-        if st.button("Next →", type="secondary") and st.session_state.page_number < total_pages - 1:
+        if st.button("Next") and st.session_state.page_number < total_pages - 1:
             st.session_state.page_number += 1
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)

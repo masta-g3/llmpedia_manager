@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from utils import init_auth_sidebar
 from theme import apply_theme
+from plots import apply_chart_theme, create_time_series
 from db import (
     load_visit_logs,
     load_qna_logs,
@@ -38,20 +38,17 @@ def plot_hourly_distribution(df, title='Hourly Distribution'):
         )
     )
     
-    fig.update_layout(
-        template='plotly_white',
+    # Apply consistent chart theme
+    fig = apply_chart_theme(
+        fig,
         height=300,
-        margin=dict(t=30, b=0, l=0, r=0),
+        title=title,
         xaxis_title="Hour of Day",
-        yaxis_title="Count",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor")),
-        showlegend=False
+        yaxis_title="Count"
     )
     
-    fig.update_xaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    fig.update_yaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
+    # Additional customizations
+    fig.update_layout(showlegend=False)
     
     return fig
 
@@ -67,20 +64,17 @@ def plot_daily_metrics(df, title='Daily Trend'):
         )
     )
     
-    fig.update_layout(
-        template='plotly_white',
+    # Apply consistent chart theme
+    fig = apply_chart_theme(
+        fig,
         height=300,
-        margin=dict(t=30, b=0, l=0, r=0),
+        title=title,
         xaxis_title="Date",
-        yaxis_title="Count",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor")),
-        showlegend=False
+        yaxis_title="Count"
     )
     
-    fig.update_xaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    fig.update_yaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
+    # Additional customizations
+    fig.update_layout(showlegend=False)
     
     return fig
 

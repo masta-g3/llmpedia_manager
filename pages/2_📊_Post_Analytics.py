@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
 from utils import init_auth_sidebar
 from theme import apply_theme
 from data import load_tweet_analytics, get_thread_metrics
+from plots import create_time_series, create_bar_chart, apply_chart_theme
+import plotly.graph_objects as go  # Still needed for the tweet-level chart
 
 # Set page config
 st.set_page_config(layout="wide", page_title="Post Analytics")
@@ -19,45 +19,20 @@ if not is_authenticated:
     st.error("⚠️ Please login using the sidebar to access analytics")
     st.stop()
 
+## Initialize session state for pagination if it doesn't exist
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 1
+
 def plot_time_series(df, metrics):
-    fig = go.Figure()
-    
-    for metric in metrics:
-        daily_data = df.groupby('Date')[metric].sum().reset_index()
-        fig.add_trace(
-            go.Scatter(
-                x=daily_data['Date'],
-                y=daily_data[metric],
-                name=metric,
-                mode='lines+markers'
-            )
-        )
-    
-    fig.update_layout(
-        template='plotly_white',
+    # Use the centralized time series function
+    return create_time_series(
+        df=df,
+        x_col='Date',
+        y_cols=metrics,
         height=500,
-        margin=dict(t=30, b=0, l=0, r=0),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
         xaxis_title="Date",
-        yaxis_title="Count",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(
-            color=st.get_option("theme.textColor")
-        )
+        yaxis_title="Count"
     )
-    
-    # Update grid color based on theme
-    fig.update_xaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    fig.update_yaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    
-    return fig
 
 def escape_html(text):
     """Escape HTML special characters and wrap in a span to prevent code block rendering."""
@@ -118,31 +93,34 @@ def display_tweet_text(row):
 def display_metrics(metrics_data, is_thread=False):
     """Display engagement metrics in a formatted container."""
     st.markdown("""
-        <div style="background-color: rgba(128, 128, 128, 0.05); padding: 12px; border-radius: 8px;">
-            <h5 style="margin: 0 0 8px 0; font-size: 0.9em; color: #666;">Engagement Metrics</h5>
+        <div class="metrics-container">
+            <div class="metrics-header">Engagement Metrics</div>
     """, unsafe_allow_html=True)
     
     st.markdown(f"""
-        <div class="metrics-container" style="flex-direction: column;">
             <div class="metric-box">
-                <strong>👁️ Impressions</strong><br>{metrics_data['Impressions']:,}
+                <span class="metric-label">Impressions</span>
+                <span class="metric-value">{metrics_data['Impressions']:,}</span>
             </div>
             <div class="metric-box">
-                <strong>❤️ Likes</strong><br>{metrics_data['Likes']:,}
+                <span class="metric-label">Likes</span>
+                <span class="metric-value">{metrics_data['Likes']:,}</span>
             </div>
             <div class="metric-box">
-                <strong>🔄 Reposts</strong><br>{metrics_data['Reposts']:,}
+                <span class="metric-label">Reposts</span>
+                <span class="metric-value">{metrics_data['Reposts']:,}</span>
             </div>
             <div class="metric-box">
-                <strong>💬 Replies</strong><br>{metrics_data['Replies']:,}
+                <span class="metric-label">Replies</span>
+                <span class="metric-value">{metrics_data['Replies']:,}</span>
             </div>
-        </div>
         </div>
     """, unsafe_allow_html=True)
 
 def display_tweet_card(row, is_thread=False):
     """Display a single tweet card with all components."""
     with st.container():
+        st.markdown('<div class="tweet-card">', unsafe_allow_html=True)
         col1, col2 = st.columns([2, 1])
         
         with col1:
@@ -159,6 +137,10 @@ def display_tweet_card(row, is_thread=False):
         with col2:
             metrics_data = get_thread_metrics(row['thread_df'], row.name) if is_thread else row
             display_metrics(metrics_data, is_thread)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Add spacing after each card
+        st.markdown('<div style="margin-bottom: 1.5rem;"></div>', unsafe_allow_html=True)
 
 def display_thread(thread_df):
     """Display a thread of tweets with proper formatting."""
@@ -247,50 +229,98 @@ def plot_tweet_level_chart(df, metrics):
             )
         )
     
-    fig.update_layout(
-        template='plotly_white',
+    # Apply the chart theme
+    fig = apply_chart_theme(
+        fig, 
         height=500,
-        margin=dict(t=30, b=0, l=0, r=0),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
+        xaxis_title="Publication Date",
+        yaxis_title="Count"
+    )
+    
+    # Additional customizations specific to this chart
+    fig.update_layout(
         xaxis=dict(
-            title="Publication Date",
             type='date',
             tickformat='%Y-%m-%d'
-        ),
-        yaxis_title="Count",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(
-            color=st.get_option("theme.textColor")
         ),
         barmode='group',  # Options: 'group' (side by side) or 'stack' (stacked)
         bargap=0.15,      # Gap between bars in the same group
         bargroupgap=0.1   # Gap between bar groups
     )
     
-    # Update grid color based on theme
-    fig.update_xaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    fig.update_yaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    
     return fig
 
+def display_pagination_controls(total_items, items_per_page, current_page):
+    """Display pagination controls and handle page navigation."""
+    total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
+    
+    # Reset current page if it's out of range
+    if current_page > total_pages:
+        st.session_state.current_page = 1
+        current_page = 1
+    
+    # Calculate start and end indices for the current page
+    start_idx = (current_page - 1) * items_per_page
+    end_idx = min(start_idx + items_per_page, total_items)
+    
+    col1, col2, col3 = st.columns([1, 3, 1])
+    
+    with col2:
+        st.markdown('<div class="pagination-container">', unsafe_allow_html=True)
+        
+        # Create a flexible layout for pagination
+        if total_pages <= 7:  # Show all pages if 7 or fewer
+            page_buttons = list(range(1, total_pages + 1))
+        else:
+            # Always show first, last, current and some neighbors
+            if current_page <= 3:
+                # Near the beginning
+                page_buttons = list(range(1, 6)) + ["…", total_pages]
+            elif current_page >= total_pages - 2:
+                # Near the end
+                page_buttons = [1, "…"] + list(range(total_pages - 4, total_pages + 1))
+            else:
+                # Middle
+                page_buttons = [1, "…"] + list(range(current_page - 1, current_page + 2)) + ["…", total_pages]
+        
+        # Previous button
+        cols = st.columns([1] + [1] * len(page_buttons) + [1])
+        
+        with cols[0]:
+            if current_page > 1:
+                if st.button("⬅️", key="prev_page", help="Previous page"):
+                    st.session_state.current_page = current_page - 1
+                    st.experimental_rerun()
+        
+        # Page number buttons
+        for i, page_num in enumerate(page_buttons, 1):
+            with cols[i]:
+                if page_num == "…":
+                    st.markdown("<div style='text-align: center; padding: 0.25rem;'>…</div>", unsafe_allow_html=True)
+                else:
+                    button_style = "font-weight: bold;" if page_num == current_page else ""
+                    if st.button(f"{page_num}", key=f"page_{page_num}", 
+                               help=f"Go to page {page_num}",
+                               disabled=page_num == current_page):
+                        st.session_state.current_page = page_num
+                        st.rerun()
+        
+        # Next button
+        with cols[-1]:
+            if current_page < total_pages:
+                if st.button("➡️", key="next_page", help="Next page"):
+                    st.session_state.current_page = current_page + 1
+                    st.rerun()
+        
+        # Page info text
+        st.markdown(f"<div style='text-align: center; margin-top: 0.5rem; font-size: 0.8rem;'>Showing {start_idx + 1}-{min(end_idx, total_items)} of {total_items} items</div>", 
+                 unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    return current_page, start_idx, end_idx
+
 def main():
-    st.markdown('''
-        <style>
-        .tweet-text {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            padding: 0.5rem 0;
-        }
-        </style>
-    ''', unsafe_allow_html=True)
     
     st.markdown('<div class="main-header">', unsafe_allow_html=True)
     st.title("📊 Post Analytics")
@@ -299,8 +329,8 @@ def main():
     # Load data
     df = load_tweet_analytics()
     
-    # Controls in a card
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Controls in a zen panel
+    st.markdown('<div class="zen-panel">', unsafe_allow_html=True)
     
     # Date range selector
     min_date = df['Date'].min().date()
@@ -367,9 +397,9 @@ def main():
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Time series chart in a card
+    # Time series chart in a zen panel
     if selected_metrics:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="zen-panel">', unsafe_allow_html=True)
         
         if view_type == "Timeline View":
             st.plotly_chart(
@@ -388,9 +418,9 @@ def main():
     # Tweet Gallery
     st.header("Tweet Gallery")
     
-    # Gallery controls in a card
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([2, 2, 1])
+    # Gallery controls in a zen panel
+    st.markdown('<div class="zen-panel">', unsafe_allow_html=True)
+    col1, col2, col3, col4 = st.columns([1.5, 1.5, 1, 1])
     with col1:
         sort_by = st.selectbox(
             "Sort by",
@@ -403,9 +433,15 @@ def main():
         )
     with col3:
         ascending = st.checkbox("Ascending order", value=False)
+    with col4:
+        posts_per_page = st.selectbox(
+            "Posts per page",
+            [5, 10, 15, 20],
+            index=1  # Default to 10 posts per page
+        )
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Use filtered_df for the gallery display
+    # Use filtered_df for the gallery display with pagination
     if view_mode == "Threads Only":
         thread_starts = filtered_df[filtered_df['is_thread_start']].copy()
         if sort_by == 'Date':
@@ -421,12 +457,30 @@ def main():
             )
             thread_starts = thread_starts.sort_values(sort_by + '_sum', ascending=ascending)
         
-        for _, thread_start in thread_starts.iterrows():
+        # Pagination for threads
+        total_threads = len(thread_starts)
+        current_page = st.session_state.current_page
+        current_page, start_idx, end_idx = display_pagination_controls(total_threads, posts_per_page, current_page)
+        
+        # Display only threads for the current page
+        page_thread_starts = thread_starts.iloc[start_idx:end_idx]
+        
+        for _, thread_start in page_thread_starts.iterrows():
             thread_tweets = filtered_df[filtered_df['thread_id'] == thread_start['thread_id']]
             display_thread(thread_tweets)
+            
     else:
         df_sorted = filtered_df.sort_values(by=sort_by, ascending=ascending)
-        for _, row in df_sorted.iterrows():
+        
+        # Pagination for all tweets
+        total_tweets = len(df_sorted)
+        current_page = st.session_state.current_page
+        current_page, start_idx, end_idx = display_pagination_controls(total_tweets, posts_per_page, current_page)
+        
+        # Display only tweets for the current page
+        page_tweets = df_sorted.iloc[start_idx:end_idx]
+        
+        for _, row in page_tweets.iterrows():
             display_tweet_card(row)
 
 if __name__ == "__main__":

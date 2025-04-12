@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import time
 from utils import init_auth_sidebar
 from theme import apply_theme
+from plots import create_bar_chart, apply_chart_theme
 from db import load_workflow_runs
 
 # Set page config
@@ -53,37 +53,33 @@ def plot_step_performance(df):
     step_stats['step_num'] = step_stats['step_name'].str.extract('(\d+)').astype(float)
     step_stats = step_stats.sort_values('step_num')
     
-    fig = go.Figure()
+    # Custom hover template
+    hover_template = 'Step: %{x}<br>Success Rate: %{y:.1f}%<br>Total Runs: %{customdata}<extra></extra>'
     
-    # Add success rate bars
-    fig.add_trace(go.Bar(
-        x=step_stats['step_name'],
-        y=step_stats['success_rate'],
-        marker_color='rgba(55, 83, 109, 0.7)',
-        name='Success Rate',
-        hovertemplate='Step: %{x}<br>Success Rate: %{y:.1f}%<br>Total Runs: %{customdata}<extra></extra>',
-        customdata=step_stats['total_runs']
-    ))
-    
-    fig.update_layout(
-        template='plotly_white',
+    # Use centralized bar chart function
+    fig = create_bar_chart(
+        df=step_stats,
+        x_col='step_name',
+        y_col='success_rate',
+        color='rgba(55, 83, 109, 0.7)',
         height=400,
-        margin=dict(t=30, b=0, l=0, r=0),
+        xaxis_title="",
+        yaxis_title="Success Rate (%)",
+        hover_template=hover_template,
+        custom_data=['total_runs']
+    )
+    
+    # Additional customizations specific to this chart
+    fig.update_layout(
         xaxis=dict(
-            title="",
             tickangle=45,
             showgrid=False
         ),
         yaxis=dict(
-            title="Success Rate (%)",
             showgrid=True,
             gridcolor='rgba(128,128,128,0.1)',
             range=[0, 100]
-        ),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor")),
-        showlegend=False
+        )
     )
     
     return fig
@@ -138,10 +134,12 @@ def plot_timeline(df):
             showlegend=workflow_id == 0  # Show legend only for first workflow
         ))
     
+    # Apply the centralized chart theme
+    fig = apply_chart_theme(fig, height=max(300, len(step_order) * 25))
+    
+    # Apply specific customizations for this chart
     fig.update_layout(
-        template='plotly_white',
-        height=max(300, len(step_order) * 25),  # Reduced height per step from 40 to 25
-        margin=dict(t=30, b=0, l=150, r=0),  # Increased left margin for step names
+        margin=dict(l=150, r=0),  # Increased left margin for step names
         xaxis=dict(
             title="",
             showgrid=True,
@@ -157,17 +155,7 @@ def plot_timeline(df):
             ticktext=step_order,
             tickvals=step_order
         ),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor")),
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
+        showlegend=True
     )
     
     return fig

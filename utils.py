@@ -4,35 +4,6 @@ import hmac
 def init_auth_sidebar():
     """Initialize the authentication sidebar with a subtle design."""
     with st.sidebar:
-        st.markdown("""
-        <style>
-        /* Auth-specific styles only - general theme is now in theme.py */
-        .auth-status {
-            padding: 0.5rem;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            letter-spacing: 0.3px;
-        }
-        .auth-status.logged-in {
-            color: #00CA4E;
-            background-color: rgba(0, 202, 78, 0.05);
-        }
-        .auth-status.logged-out {
-            padding: 0;
-            margin: 0;
-        }
-        .auth-container {
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(128, 128, 128, 0.1);
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
         st.markdown('<div class="auth-container">', unsafe_allow_html=True)
         st.markdown("#### 🔐 Authentication", help="Login to access all features")
         
@@ -45,7 +16,7 @@ def init_auth_sidebar():
                 st.session_state["password_correct"] = False
 
         if st.session_state.get("password_correct", False):
-            st.markdown('<div class="auth-status logged-in">●&nbsp; Logged in</div>', unsafe_allow_html=True)
+            st.markdown('<div class="auth-status logged-in">Logged in</div>', unsafe_allow_html=True)
             if st.button("Logout", type="secondary", use_container_width=True):
                 st.session_state["password_correct"] = False
                 st.rerun()

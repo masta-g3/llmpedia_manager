@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from utils import init_auth_sidebar
 from theme import apply_theme
+from plots import create_area_chart, create_bar_chart, create_pie_chart, apply_chart_theme
 from db import (
     load_token_usage_logs,
     get_model_stats,
@@ -33,109 +33,63 @@ def format_cost(cost):
 
 def plot_daily_costs(df):
     """Create a stacked area chart of daily costs."""
-    fig = go.Figure()
-    
-    # Add prompt costs
-    fig.add_trace(go.Scatter(
-        x=df['date'],
-        y=df['prompt_cost'],
-        name='Prompt Cost',
-        fill='tonexty',
-        mode='lines',
-        line=dict(width=0.5, color='rgba(55, 83, 109, 0.7)'),
-        stackgroup='one'
-    ))
-    
-    # Add completion costs
-    fig.add_trace(go.Scatter(
-        x=df['date'],
-        y=df['completion_cost'],
-        name='Completion Cost',
-        fill='tonexty',
-        mode='lines',
-        line=dict(width=0.5, color='rgba(26, 118, 255, 0.7)'),
-        stackgroup='one'
-    ))
-    
-    fig.update_layout(
-        template='plotly_white',
+    # Use the centralized area chart function
+    return create_area_chart(
+        df=df,
+        x_col='date',
+        y_cols=['prompt_cost', 'completion_cost'],
+        labels={'prompt_cost': 'Prompt Cost', 'completion_cost': 'Completion Cost'},
+        colors=['rgba(55, 83, 109, 0.7)', 'rgba(26, 118, 255, 0.7)'],
         height=300,
-        margin=dict(t=30, b=0, l=0, r=0),
         xaxis_title="Date",
         yaxis_title="Cost (USD)",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor")),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
+        stacked=True
     )
-    
-    fig.update_xaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    fig.update_yaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    
-    return fig
 
 def plot_model_distribution(df):
     """Create a pie chart of cost distribution by model."""
-    fig = go.Figure(data=[go.Pie(
-        labels=df['model_name'],
-        values=df['total_cost'],
-        hole=.4,
-        textinfo='label+percent',
-        textposition='outside',
-        pull=[0.1 if i == 0 else 0 for i in range(len(df))]
-    )])
-    
-    fig.update_layout(
-        template='plotly_white',
+    # Use the centralized pie chart function
+    return create_pie_chart(
+        df=df,
+        names_col='model_name',
+        values_col='total_cost',
         height=400,
-        margin=dict(t=30, b=0, l=0, r=0),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor")),
-        showlegend=False
+        hole=0.4
     )
-    
-    return fig
 
 def plot_process_costs(df):
     """Create a horizontal bar chart of costs by process."""
-    fig = go.Figure()
-    
-    fig.add_trace(go.Bar(
-        y=df['process_id'],
-        x=df['total_cost'],
-        orientation='h',
-        marker_color='rgba(55, 83, 109, 0.7)',
-        customdata=df[['total_runs', 'total_prompt_tokens', 'total_completion_tokens']],
-        hovertemplate='Process: %{y}<br>' +
-                      'Total Cost: $%{x:.4f}<br>' +
-                      'Runs: %{customdata[0]}<br>' +
-                      'Prompt Tokens: %{customdata[1]}<br>' +
-                      'Completion Tokens: %{customdata[2]}<extra></extra>'
-    ))
-    
-    fig.update_layout(
-        template='plotly_white',
-        height=400,
-        margin=dict(t=30, b=0, l=0, r=0),
-        xaxis_title="Total Cost (USD)",
-        yaxis_title="Process ID",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor")),
-        showlegend=False
+    # Use the centralized bar chart function
+    hover_template = (
+        '<b>Process ID:</b> %{y}<br>' +
+        '<b>Total Cost:</b> $%{x:.4f}<br>' +
+        '<b>Runs:</b> %{customdata[0]:,}<br>' +
+        '<b>Prompt Tokens:</b> %{customdata[1]:,}<br>' +
+        '<b>Completion Tokens:</b> %{customdata[2]:,}<extra></extra>'
     )
     
-    fig.update_xaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
-    fig.update_yaxes(gridcolor='rgba(128,128,128,0.2)', zerolinecolor='rgba(128,128,128,0.2)')
+    # Sort the dataframe by total_cost to show highest costs first
+    df_sorted = df.sort_values('total_cost', ascending=False).head(10)
     
-    return fig
+    # Convert process_id to string to ensure proper display
+    df_sorted['process_id'] = df_sorted['process_id'].astype(str)
+    
+    # Check if dark mode based on theme
+    is_dark_mode = st.get_option("theme.backgroundColor") in ["#0e1117", "#111111", "#0E0E0E", "#121212"]
+    color = '#D9BF8C' if is_dark_mode else '#B5946A'  # Use numeric accent color
+    
+    return create_bar_chart(
+        df=df_sorted,
+        x_col='total_cost',
+        y_col='process_id',
+        color=color,
+        height=400,
+        xaxis_title="Total Cost (USD)",
+        yaxis_title="Process ID",
+        horizontal=True,
+        hover_template=hover_template,
+        custom_data=['total_runs', 'total_prompt_tokens', 'total_completion_tokens']
+    )
 
 def main():
     st.title("💰 Cost Analytics")
@@ -195,7 +149,10 @@ def main():
     
     with col2:
         st.subheader("Cost by Process")
-        st.plotly_chart(plot_process_costs(process_stats.head(10)), use_container_width=True)
+        # Create a more descriptive title for the chart
+        fig = plot_process_costs(process_stats)
+        fig.update_layout(title="")
+        st.plotly_chart(fig, use_container_width=True)
     
     # Detailed tables
     tab1, tab2 = st.tabs(["Model Details", "Process Details"])
