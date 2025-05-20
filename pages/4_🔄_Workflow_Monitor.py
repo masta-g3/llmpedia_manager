@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-import time
-from utils import init_auth_sidebar
+from utils import init_auth_sidebar, display_refresh_controls, init_cache_controls
 from theme import apply_theme
 from plots import create_bar_chart, apply_chart_theme
 from db import load_workflow_runs
@@ -20,12 +19,8 @@ if not is_authenticated:
     st.error("⚠️ Please login using the sidebar to access workflow monitoring")
     st.stop()
 
-# Initialize session state for auto-refresh
-if 'last_refresh' not in st.session_state:
-    st.session_state.last_refresh = datetime.now()
-    
-if 'auto_refresh' not in st.session_state:
-    st.session_state.auto_refresh = False
+# Cache refresh controls
+init_cache_controls()
 
 def get_workflow_stats(df):
     """Calculate high-level workflow statistics."""
@@ -177,23 +172,7 @@ def main():
     st.title("🔄 Workflow Monitor")
     
     # Refresh controls
-    col1, col2, col3, col4 = st.columns([1.5, 0.5, 1, 1])
-    with col1:
-        st.session_state.auto_refresh = st.checkbox("Auto-refresh (30s)", value=st.session_state.auto_refresh)
-    with col2:
-        if st.button("🔄 Refresh"):
-            st.session_state.last_refresh = datetime.now()
-            st.rerun()
-    with col3:
-        st.caption(f"Last refresh: {st.session_state.last_refresh.strftime('%H:%M:%S')}")
-    
-    # Auto-refresh logic
-    if st.session_state.auto_refresh:
-        time_since_refresh = (datetime.now() - st.session_state.last_refresh).total_seconds()
-        if time_since_refresh > 30:  # Refresh every 30 seconds
-            st.session_state.last_refresh = datetime.now()
-            time.sleep(0.1)  # Small delay to prevent excessive refreshes
-            st.rerun()
+    display_refresh_controls(refresh_interval_seconds=30)
     
     # Time range selector
     col1, col2 = st.columns([2, 1])

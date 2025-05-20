@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
-from utils import init_auth_sidebar
+from utils import init_auth_sidebar, init_cache_controls
 from theme import apply_theme
 from plots import create_time_series, create_bar_chart, apply_chart_theme
 from db import (
@@ -23,6 +23,9 @@ is_authenticated = init_auth_sidebar()
 if not is_authenticated:
     st.error("⚠️ Please login using the sidebar to access social media analytics")
     st.stop()
+
+# Cache refresh controls
+init_cache_controls()
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_cached_data(start_date=None):

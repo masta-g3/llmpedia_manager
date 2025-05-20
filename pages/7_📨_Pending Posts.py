@@ -4,7 +4,7 @@ import os
 import sys
 from datetime import datetime
 import json
-from utils import init_auth_sidebar
+from utils import init_auth_sidebar, display_refresh_controls, init_cache_controls
 from theme import apply_theme
 import llm
 
@@ -29,7 +29,13 @@ if not is_authenticated:
     st.error("⚠️ Please login using the sidebar to access post approval")
     st.stop()
 
+# Cache refresh controls
+init_cache_controls()
+
 st.title("📨 Pending Posts")
+
+# Add refresh controls
+display_refresh_controls(refresh_interval_seconds=60) # Refresh every 60 seconds
 
 # Get post_id from URL parameter
 post_id = st.query_params.get("post_id", [None])[0]

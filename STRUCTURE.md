@@ -14,7 +14,7 @@ LLMpedia Manager is a Streamlit-based monitoring and analytics dashboard for the
 ├── data.py                        # Data processing and analysis utilities
 ├── data/                          # Data files directory
 │   └── account_analytics_content.csv  # Twitter analytics data
-├── db.py                          # Database interaction functions
+├── db.py                          # Database connector with functions for fetching, manipulating, and aggregating database records (e.g., visit logs, Q&A, errors, poll results)
 ├── fetch_twitter_analytics.py     # Twitter API integration for fetching data
 ├── llm.py                         # LLM integration for content editing
 ├── pages/                         # Streamlit multi-page app components
@@ -28,20 +28,20 @@ LLMpedia Manager is a Streamlit-based monitoring and analytics dashboard for the
 ├── process_account_analytics.py   # Script for processing account analytics data
 ├── requirements.txt               # Project dependencies
 ├── theme.py                       # UI theme and styling definitions
-└── utils.py                       # Common utility functions
+└── utils.py                       # Common utility functions (auth, refresh, cache controls)
 ```
 
 ## Core Components
 
 ### Main Application Files
 
-- **app.py**: The application entry point containing the main page layout and authentication setup.
+- **app.py**: The application entry point containing the main page layout, authentication setup, and an overview of key application modules.
 - **data.py**: Provides functions for data processing, cleaning, and analysis.
-- **db.py**: Database connector with functions for fetching and manipulating database records.
+- **db.py**: Database connector with functions for fetching, manipulating, and aggregating database records (e.g., visit logs, Q&A, errors, poll results).
 - **fetch_twitter_analytics.py**: Handles Twitter API integration to fetch account analytics.
 - **llm.py**: Integrates with language models for content editing and generation.
 - **theme.py**: Defines the application's UI theme and styling for a consistent look.
-- **utils.py**: Contains general utility functions for authentication and common operations.
+- **utils.py**: Contains general utility functions for authentication, common UI components like refresh controls, and cache management (e.g., `init_cache_controls` for clearing Streamlit's data and resource caches).
 - **process_account_analytics.py**: Processes raw Twitter analytics data, identifying threads and relationships.
 
 ### Streamlit Pages
@@ -63,10 +63,12 @@ The application follows Streamlit's multi-page app structure with specialized da
 
 ## Key Features and Functionality
 
-### Authentication
+### Authentication & Caching
 
 - Uses a simple password-based authentication system through Streamlit's session state.
 - Authentication sidebar is initialized in each page to ensure secure access.
+- Implements Streamlit's caching (`st.cache_data`, `st.cache_resource`) for database queries and data loading functions to improve performance.
+- A global "Refresh Data Cache" button in the sidebar allows manual invalidation of all caches.
 
 ### Data Processing
 

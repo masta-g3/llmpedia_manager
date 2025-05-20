@@ -18,10 +18,12 @@ except:
 # Create database URL
 database_url = f"postgresql+psycopg2://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['dbname']}"
 
+@st.cache_resource
 def get_db_connection():
     """Create and return a database connection"""
     return create_engine(database_url)
 
+@st.cache_data(ttl=3600)
 def load_visit_logs(start_date=None, end_date=None):
     """Load visit logs with optional date filtering"""
     query = "SELECT * FROM visit_logs"
@@ -40,6 +42,7 @@ def load_visit_logs(start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def load_qna_logs(start_date=None, end_date=None):
     """Load Q&A logs with optional date filtering"""
     query = "SELECT * FROM qna_logs"
@@ -58,6 +61,7 @@ def load_qna_logs(start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def load_error_logs(start_date=None, end_date=None):
     """Load error logs with optional date filtering"""
     query = "SELECT * FROM error_logs"
@@ -76,6 +80,7 @@ def load_error_logs(start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def get_top_entrypoints(limit=10, start_date=None, end_date=None):
     """Get the most common entrypoints"""
     query = """
@@ -101,6 +106,7 @@ def get_top_entrypoints(limit=10, start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def get_hourly_stats(table_name, start_date=None, end_date=None):
     """Get hourly statistics for any of the log tables"""
     query = f"""
@@ -127,6 +133,7 @@ def get_hourly_stats(table_name, start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def get_daily_stats(table_name, start_date=None, end_date=None):
     """Get daily statistics for any of the log tables"""
     query = f"""
@@ -153,6 +160,7 @@ def get_daily_stats(table_name, start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def load_workflow_runs(start_date=None, end_date=None):
     """Load workflow runs with optional date filtering."""
     query = "SELECT * FROM workflow_runs"
@@ -171,6 +179,7 @@ def load_workflow_runs(start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def load_token_usage_logs(start_date=None, end_date=None):
     """Load token usage logs with optional date filtering."""
     query = "SELECT * FROM token_usage_logs"
@@ -189,6 +198,7 @@ def load_token_usage_logs(start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def get_model_stats(start_date=None, end_date=None):
     """Get aggregated stats per model."""
     query = """
@@ -220,6 +230,7 @@ def get_model_stats(start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def get_process_stats(start_date=None, end_date=None):
     """Get aggregated stats per process."""
     query = """
@@ -251,6 +262,7 @@ def get_process_stats(start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def get_daily_cost_stats(start_date=None, end_date=None):
     """Get daily cost statistics."""
     query = """
@@ -280,6 +292,7 @@ def get_daily_cost_stats(start_date=None, end_date=None):
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def load_tweet_analysis(start_date=None, end_date=None) -> pd.DataFrame:
     """Load tweet analysis results with optional date filtering."""
     query = "SELECT * FROM tweet_analysis"
@@ -298,6 +311,7 @@ def load_tweet_analysis(start_date=None, end_date=None) -> pd.DataFrame:
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def get_tweet_stats(start_date=None, end_date=None) -> pd.DataFrame:
     """Get high-level tweet statistics."""
     query = """
@@ -326,6 +340,7 @@ def get_tweet_stats(start_date=None, end_date=None) -> pd.DataFrame:
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def get_daily_tweet_stats(start_date=None, end_date=None) -> pd.DataFrame:
     """Get daily tweet statistics."""
     query = """
@@ -357,6 +372,7 @@ def get_daily_tweet_stats(start_date=None, end_date=None) -> pd.DataFrame:
     conn = get_db_connection()
     return pd.read_sql(query, conn)
 
+@st.cache_data(ttl=3600)
 def get_top_authors(limit: int = 10, start_date=None, end_date=None) -> pd.DataFrame:
     """Get most active authors based on engagement metrics."""
     query = """
@@ -466,4 +482,32 @@ def delete_tweet_reply(tweet_id):
             return True
     except Exception as e:
         print(f"Error deleting tweet reply: {e}")
-        return False 
+        return False
+
+@st.cache_data(ttl=3600)
+def load_poll_results(start_date=None, end_date=None):
+    """Load poll results, aggregated by day and feature_name, with optional date filtering"""
+    query = """
+    SELECT 
+        DATE(tstp) as date,
+        feature_name,
+        COUNT(*) as vote_count
+    FROM feature_poll_votes
+    """
+    conditions = []
+    
+    if start_date:
+        conditions.append(f"tstp >= '{start_date}'")
+    if end_date:
+        conditions.append(f"tstp <= '{end_date}'")
+    
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += """
+    GROUP BY DATE(tstp), feature_name
+    ORDER BY date, feature_name
+    """
+    
+    conn = get_db_connection()
+    return pd.read_sql(query, conn) 

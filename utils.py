@@ -1,5 +1,7 @@
 import streamlit as st
 import hmac
+from datetime import datetime
+import time
 
 def init_auth_sidebar():
     """Initialize the authentication sidebar with a subtle design."""
@@ -30,4 +32,45 @@ def init_auth_sidebar():
         
         st.markdown('</div>', unsafe_allow_html=True)
         
-    return st.session_state.get("password_correct", False) 
+    return st.session_state.get("password_correct", False)
+
+## Reusable UI component for refresh controls
+def display_refresh_controls(refresh_interval_seconds=30):
+    """Displays refresh button and auto-refresh checkbox."""
+    
+    ## Initialize session state if not already present
+    if 'last_refresh' not in st.session_state:
+        st.session_state.last_refresh = datetime.now()
+    if 'auto_refresh' not in st.session_state:
+        st.session_state.auto_refresh = False
+
+    ## Layout for controls
+    col1, col2, col3 = st.columns([1.5, 0.5, 1])
+    
+    with col1:
+        st.session_state.auto_refresh = st.checkbox(f"Auto-refresh ({refresh_interval_seconds}s)", value=st.session_state.auto_refresh, key="auto_refresh_widget")
+    
+    with col2:
+        if st.button("🔄 Refresh", key="refresh_button"):
+            st.session_state.last_refresh = datetime.now()
+            st.rerun()
+            
+    with col3:
+        st.caption(f"Last refresh: {st.session_state.last_refresh.strftime('%H:%M:%S')}")
+
+    ## Auto-refresh logic
+    if st.session_state.auto_refresh:
+        time_since_refresh = (datetime.now() - st.session_state.last_refresh).total_seconds()
+        if time_since_refresh > refresh_interval_seconds:
+            st.session_state.last_refresh = datetime.now()
+            time.sleep(0.1) ## Small delay
+            st.rerun() 
+
+def init_cache_controls():
+    """Add a sidebar button to clear Streamlit caches and rerun."""
+    with st.sidebar:
+        if st.button("🔄 Refresh Data Cache", type="secondary", use_container_width=True):
+            ## Clear both data and resource caches
+            st.cache_data.clear()
+            st.cache_resource.clear()
+            st.experimental_rerun() 

@@ -6,6 +6,8 @@ from datetime import datetime
 from thefuzz import fuzz
 import re
 
+@st.cache_data(ttl=3600)
+
 def get_database_url():
     """Get database URL from environment variables or streamlit secrets."""
     try:
@@ -44,6 +46,8 @@ def find_best_match(analytics_text, insights_df):
     
     return matches[0] if matches else None
 
+@st.cache_data(ttl=3600)
+
 def load_tweet_insights(arxiv_code: str = None, drop_rejected: bool = False):
     """Load tweet insights from database."""
     query = "SELECT * FROM tweet_reviews"
@@ -62,6 +66,8 @@ def load_tweet_insights(arxiv_code: str = None, drop_rejected: bool = False):
     tweet_reviews_df.rename(columns={"review": "tweet_insight"}, inplace=True)
     
     return tweet_reviews_df
+
+@st.cache_data(ttl=3600)
 
 def load_tweet_analytics():
     """Load and combine tweet analytics with insights."""

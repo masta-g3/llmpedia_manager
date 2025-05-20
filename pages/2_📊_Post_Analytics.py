@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from utils import init_auth_sidebar
+from utils import init_auth_sidebar, init_cache_controls
 from theme import apply_theme
 from data import load_tweet_analytics, get_thread_metrics
 from plots import create_time_series, create_bar_chart, apply_chart_theme
@@ -18,6 +18,9 @@ is_authenticated = init_auth_sidebar()
 if not is_authenticated:
     st.error("⚠️ Please login using the sidebar to access analytics")
     st.stop()
+
+# Cache refresh controls
+init_cache_controls()
 
 ## Initialize session state for pagination if it doesn't exist
 if 'current_page' not in st.session_state:

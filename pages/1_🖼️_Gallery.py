@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError
 import os
 from datetime import datetime
 import pandas as pd
-from utils import init_auth_sidebar
+from utils import init_auth_sidebar, init_cache_controls
 from theme import apply_theme
 
 st.set_page_config(layout="wide", page_title="Image Gallery")
@@ -17,6 +17,9 @@ is_authenticated = init_auth_sidebar()
 if not is_authenticated:
     st.error("⚠️ Please login using the sidebar to access the gallery")
     st.stop()
+
+# Cache refresh controls
+init_cache_controls()
 
 # AWS S3 setup
 s3 = boto3.client(

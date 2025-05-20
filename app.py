@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit_nested_layout
-from utils import init_auth_sidebar
+from utils import init_auth_sidebar, init_cache_controls
 from theme import apply_theme
 
 st.set_page_config(
@@ -25,6 +25,9 @@ def main():
         st.warning("Please login using the sidebar to access the application.")
         st.stop()
     
+    ## Cache refresh controls
+    init_cache_controls()
+    
     # Introduction
     st.markdown("""
     Welcome to the LLMpedia Manager! This application helps you manage and analyze your LLMpedia content.
@@ -37,56 +40,48 @@ def main():
     
     with col1:
         st.markdown("""
-        <div class="feature-card">
-            <h3>📊 Analytics Dashboard</h3>
-            <p>Comprehensive analytics and monitoring:</p>
+        <div class="card">
+            <h3>🖼️ Content Management & Publishing</h3>
+            <p>Manage assets and review content:</p>
             <ul>
-                <li>Visit logs and user activity tracking</li>
-                <li>Q&A interaction analysis</li>
-                <li>Error monitoring and tracking</li>
-                <li>Top entrypoint analysis</li>
+                <li>Browse and manage LLMpedia image assets (Gallery)</li>
+                <li>Review and approve AI-generated posts (Pending Posts)</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
         
     with col2:
         st.markdown("""
-        <div class="feature-card">
-            <h3>🔄 Workflow Management</h3>
-            <p>Monitor and analyze workflow performance:</p>
+        <div class="card">
+            <h3>📈 Social Media & Engagement</h3>
+            <p>Analyze performance and discussions:</p>
             <ul>
-                <li>Workflow run history and status</li>
-                <li>Process execution tracking</li>
-                <li>Performance metrics visualization</li>
-                <li>Error rate monitoring</li>
+                <li>Track social media post performance (Post Analytics)</li>
+                <li>Gain insights into Twitter discussions (X Discussions)</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
     with col3:
         st.markdown("""
-        <div class="feature-card">
-            <h3>📡 Telemetry Insights</h3>
-            <p>Detailed system performance metrics:</p>
+        <div class="card">
+            <h3>⚙️ Application & Workflow Performance</h3>
+            <p>Monitor system health and processes:</p>
             <ul>
-                <li>Hourly and daily usage patterns</li>
-                <li>User interaction tracking</li>
-                <li>System health monitoring</li>
-                <li>Performance bottleneck detection</li>
+                <li>Oversee application usage and telemetry (App Telemetry)</li>
+                <li>Track automated workflow status and metrics (Workflow Monitor)</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
     with col4:
         st.markdown("""
-        <div class="feature-card">
-            <h3>💰 Cost Analytics</h3>
+        <div class="card">
+            <h3>💰 Financial Oversight</h3>
             <p>Comprehensive cost tracking and analysis:</p>
             <ul>
-                <li>Model usage cost breakdown</li>
-                <li>Token consumption metrics</li>
-                <li>Daily cost tracking</li>
-                <li>Process-level cost analysis</li>
+                <li>Analyze model usage and related costs (Cost Analytics)</li>
+                <li>View token consumption and daily cost metrics</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)

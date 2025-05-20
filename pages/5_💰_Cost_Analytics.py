@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from utils import init_auth_sidebar
+from utils import init_auth_sidebar, init_cache_controls
 from theme import apply_theme
 from plots import create_area_chart, create_bar_chart, create_pie_chart, apply_chart_theme
 from db import (
@@ -23,6 +23,9 @@ is_authenticated = init_auth_sidebar()
 if not is_authenticated:
     st.error("⚠️ Please login using the sidebar to access cost analytics")
     st.stop()
+
+# Cache refresh controls
+init_cache_controls()
 
 def format_cost(cost):
     """Format cost to display in dollars with appropriate precision."""

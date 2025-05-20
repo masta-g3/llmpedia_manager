@@ -1,0 +1,99 @@
+# Deploying LLMPedia Manager on DigitalOcean
+
+These instructions assume you already have another Streamlit-based app (LLMpedia) deployed on the same droplet. The steps below focus only on what is **additional or different** for the LLMPedia Manager utility.
+
+---
+
+## 1. Prepare the Server
+
+1. **SSH in** as the same user you used for the first app (or `root` if you kept everything as root):
+   ```bash
+   ssh root@YOUR_DROPLET_IP
+   ```
+2. **Update system packages (optional but recommended)**:
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   ```
+
+## 2. Deploy Code
+```bash
+git clone https://github.com/masta-g3/llmpedia_manager llmpedia_manager
+cd llmpedia_manager
+
+# Create & activate venv (using uv, pip, or your preferred tool)
+uv venv
+source .venv/bin/activate
+
+# Install dependencies
+uv pip install -r requirements.txt
+```
+
+## 3. Configure Environment Variables
+
+Copy your template and edit with production secrets just like you did for the first app:
+
+```bash
+cp .env.template .env
+vi .env
+```
+
+## 4. Systemd Service
+
+1. **Copy service file**:
+   ```bash
+   sudo cp deployment/digitalocean/llmpedia_manager.service /etc/systemd/system/llmpedia_manager.service
+   ```
+2. **Enable & start**:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable llmpedia_manager
+   sudo systemctl start llmpedia_manager
+   sudo systemctl status llmpedia_manager
+   ```
+
+## 5. Nginx Reverse Proxy
+
+1. **Copy the provided site config**:
+   ```bash
+   sudo cp deployment/digitalocean/nginx_llmpedia_manager.conf /etc/nginx/sites-available/llmpedia_manager
+   ```
+2. **Enable it**:
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/llmpedia_manager /etc/nginx/sites-enabled/
+   ```
+3. **Test & reload**:
+   ```bash
+   sudo nginx -t
+   sudo systemctl reload nginx
+   ```
+
+## 6. DNS & SSL
+
+1. **DNS**: Create an `A` record for `manager.llmpedia.ai` pointing to your droplet.
+2. **SSL** (Certbot):
+   ```bash
+   sudo certbot --nginx -d manager.llmpedia.ai
+   ```
+   Choose to redirect HTTP to HTTPS when prompted.
+
+## 7. Verify
+
+Open `https://manager.llmpedia.ai` in your browser. The LLMPedia Manager Streamlit dashboard should load (on port 8502 behind Nginx).
+
+---
+
+### Maintenance Commands
+
+```bash
+# Pull updates
+cd /root/llmpedia_manager  # adjust path
+sudo git pull
+source .venv/bin/activate
+uv pip install -r requirements.txt
+sudo systemctl restart llmpedia_manager
+
+# View logs
+sudo journalctl -u llmpedia_manager -f
+```
+
+Happy monitoring! 🖥️📊 

@@ -30,6 +30,17 @@ def _apply_theme_css():
         h3 { font-size: 1.1rem !important; }
         h4 { font-size: 1rem !important; font-weight: 500 !important; margin-top: 1rem; margin-bottom: 0.4rem; }
         
+        /* Main page header specific style */
+        .main-header {
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .main-header h1 {
+            margin-bottom: 0.25rem; /* Adjust spacing below the title within the header */
+        }
+        
         /* Streamlit layout improvements */
         .block-container {
             padding: 2.5rem 2rem !important;
