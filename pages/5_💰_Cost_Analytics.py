@@ -35,6 +35,8 @@ init_cache_controls()
 
 def format_cost(cost):
     """Format cost to display in dollars with appropriate precision."""
+    if cost is None or pd.isna(cost):
+        return "$0.00"
     if cost >= 1:
         return f"${cost:.2f}"
     else:
