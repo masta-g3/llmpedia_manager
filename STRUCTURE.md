@@ -40,7 +40,7 @@ LLMpedia Manager is a Streamlit-based monitoring and analytics dashboard for the
 - **db.py**: Database connector with functions for fetching, manipulating, and aggregating database records (e.g., visit logs, Q&A, errors, poll results).
 - **fetch_twitter_analytics.py**: Handles Twitter API integration to fetch account analytics.
 - **llm.py**: Integrates with language models for content editing and generation.
-- **theme.py**: Defines the application's UI theme and styling for a consistent look.
+- **theme.py**: Modern, accessible UI theme system with design tokens, CSS custom properties for light/dark mode, and component-based architecture. Reduced from 545 to ~250 lines while improving maintainability and accessibility.
 - **utils.py**: Contains general utility functions for authentication, common UI components like refresh controls, and cache management (e.g., `init_cache_controls` for clearing Streamlit's data and resource caches).
 - **process_account_analytics.py**: Processes raw Twitter analytics data, identifying threads and relationships.
 

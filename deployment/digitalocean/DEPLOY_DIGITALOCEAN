@@ -61,7 +61,15 @@ vi .env
    ```bash
    sudo ln -s /etc/nginx/sites-available/llmpedia_manager /etc/nginx/sites-enabled/
    ```
-3. **Test & reload**:
+3. **Verify the configuration was set up correctly**:
+   ```bash
+   # Check that the file was copied
+   sudo ls -la /etc/nginx/sites-available/ | grep llmpedia_manager
+   
+   # Check that the symlink was created
+   sudo ls -la /etc/nginx/sites-enabled/ | grep llmpedia_manager
+   ```
+4. **Test & reload**:
    ```bash
    sudo nginx -t
    sudo systemctl reload nginx
@@ -75,6 +83,8 @@ vi .env
    sudo certbot --nginx -d manager.llmpedia.ai
    ```
    Choose to redirect HTTP to HTTPS when prompted.
+   
+   **If Certbot can't find the server block**: This usually means the nginx configuration wasn't properly set up. Go back to step 5 and verify the configuration files are in place, then try again.
 
 ## 7. Verify
 

@@ -207,9 +207,13 @@ def get_model_stats(start_date=None, end_date=None):
         COUNT(*) as total_runs,
         SUM(prompt_tokens) as total_prompt_tokens,
         SUM(completion_tokens) as total_completion_tokens,
+        SUM(cache_creation_input_tokens) as total_cache_creation_tokens,
+        SUM(cache_read_input_tokens) as total_cache_read_tokens,
         SUM(prompt_cost) as total_prompt_cost,
         SUM(completion_cost) as total_completion_cost,
-        SUM(prompt_cost + completion_cost) as total_cost
+        SUM(cache_creation_cost) as total_cache_creation_cost,
+        SUM(cache_read_cost) as total_cache_read_cost,
+        SUM(prompt_cost + completion_cost + COALESCE(cache_creation_cost, 0) + COALESCE(cache_read_cost, 0)) as total_cost
     FROM token_usage_logs
     """
     conditions = []
@@ -239,9 +243,13 @@ def get_process_stats(start_date=None, end_date=None):
         COUNT(*) as total_runs,
         SUM(prompt_tokens) as total_prompt_tokens,
         SUM(completion_tokens) as total_completion_tokens,
+        SUM(cache_creation_input_tokens) as total_cache_creation_tokens,
+        SUM(cache_read_input_tokens) as total_cache_read_tokens,
         SUM(prompt_cost) as total_prompt_cost,
         SUM(completion_cost) as total_completion_cost,
-        SUM(prompt_cost + completion_cost) as total_cost
+        SUM(cache_creation_cost) as total_cache_creation_cost,
+        SUM(cache_read_cost) as total_cache_read_cost,
+        SUM(prompt_cost + completion_cost + COALESCE(cache_creation_cost, 0) + COALESCE(cache_read_cost, 0)) as total_cost
     FROM token_usage_logs
     """
     conditions = []
@@ -270,7 +278,9 @@ def get_daily_cost_stats(start_date=None, end_date=None):
         DATE(tstp) as date,
         SUM(prompt_cost) as prompt_cost,
         SUM(completion_cost) as completion_cost,
-        SUM(prompt_cost + completion_cost) as total_cost,
+        SUM(cache_creation_cost) as cache_creation_cost,
+        SUM(cache_read_cost) as cache_read_cost,
+        SUM(prompt_cost + completion_cost + COALESCE(cache_creation_cost, 0) + COALESCE(cache_read_cost, 0)) as total_cost,
         COUNT(*) as total_runs
     FROM token_usage_logs
     """
