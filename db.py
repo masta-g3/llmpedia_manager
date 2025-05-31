@@ -520,4 +520,176 @@ def load_poll_results(start_date=None, end_date=None):
     """
     
     conn = get_db_connection()
-    return pd.read_sql(query, conn) 
+    return pd.read_sql(query, conn)
+
+@st.cache_data(ttl=3600)
+def get_daily_cost_stats_grouped(start_date=None, end_date=None, group_by="token_type"):
+    """
+    Get daily cost statistics grouped by different dimensions.
+    
+    Args:
+        start_date: Optional start date filter
+        end_date: Optional end date filter  
+        group_by: Grouping dimension - "token_type", "model", or "process"
+        
+    Returns:
+        DataFrame with columns: date, category, prompt_cost, completion_cost, 
+        cache_creation_cost, cache_read_cost, total_cost, total_runs
+    """
+    if group_by == "token_type":
+        # Return the existing token type structure - unpivoted for consistency
+        query = """
+        SELECT 
+            DATE(tstp) as date,
+            'Prompt' as category,
+            SUM(prompt_cost) as cost,
+            COUNT(*) as runs
+        FROM token_usage_logs
+        """
+        conditions = []
+        
+        if start_date:
+            conditions.append(f"tstp >= '{start_date}'")
+        if end_date:
+            conditions.append(f"tstp <= '{end_date}'")
+        
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += """
+        GROUP BY DATE(tstp)
+        UNION ALL
+        SELECT 
+            DATE(tstp) as date,
+            'Completion' as category,
+            SUM(completion_cost) as cost,
+            COUNT(*) as runs
+        FROM token_usage_logs
+        """
+        
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += """
+        GROUP BY DATE(tstp)
+        UNION ALL
+        SELECT 
+            DATE(tstp) as date,
+            'Cache Creation' as category,
+            SUM(cache_creation_cost) as cost,
+            COUNT(*) as runs
+        FROM token_usage_logs
+        """
+        
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += """
+        GROUP BY DATE(tstp)
+        UNION ALL
+        SELECT 
+            DATE(tstp) as date,
+            'Cache Read' as category,
+            SUM(cache_read_cost) as cost,
+            COUNT(*) as runs
+        FROM token_usage_logs
+        """
+        
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += """
+        GROUP BY DATE(tstp)
+        ORDER BY date, category
+        """
+        
+    elif group_by == "model":
+        query = """
+        SELECT 
+            DATE(tstp) as date,
+            model_name as category,
+            SUM(prompt_cost + completion_cost + COALESCE(cache_creation_cost, 0) + COALESCE(cache_read_cost, 0)) as cost,
+            COUNT(*) as runs
+        FROM token_usage_logs
+        """
+        conditions = []
+        
+        if start_date:
+            conditions.append(f"tstp >= '{start_date}'")
+        if end_date:
+            conditions.append(f"tstp <= '{end_date}'")
+        
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += """
+        GROUP BY DATE(tstp), model_name
+        ORDER BY date, model_name
+        """
+        
+    elif group_by == "process":
+        query = """
+        SELECT 
+            DATE(tstp) as date,
+            process_id as category,
+            SUM(prompt_cost + completion_cost + COALESCE(cache_creation_cost, 0) + COALESCE(cache_read_cost, 0)) as cost,
+            COUNT(*) as runs
+        FROM token_usage_logs
+        """
+        conditions = []
+        
+        if start_date:
+            conditions.append(f"tstp >= '{start_date}'")
+        if end_date:
+            conditions.append(f"tstp <= '{end_date}'")
+        
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        
+        query += """
+        GROUP BY DATE(tstp), process_id
+        ORDER BY date, process_id
+        """
+    
+    conn = get_db_connection()
+    return pd.read_sql(query, conn)
+
+@st.cache_data(ttl=3600)
+def get_available_models(start_date=None, end_date=None):
+    """Get list of available models in the date range."""
+    query = "SELECT DISTINCT model_name FROM token_usage_logs"
+    conditions = []
+    
+    if start_date:
+        conditions.append(f"tstp >= '{start_date}'")
+    if end_date:
+        conditions.append(f"tstp <= '{end_date}'")
+    
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += " ORDER BY model_name"
+    
+    conn = get_db_connection()
+    result = pd.read_sql(query, conn)
+    return result["model_name"].tolist()
+
+@st.cache_data(ttl=3600)
+def get_available_processes(start_date=None, end_date=None):
+    """Get list of available processes in the date range."""
+    query = "SELECT DISTINCT process_id FROM token_usage_logs WHERE process_id IS NOT NULL"
+    conditions = []
+    
+    if start_date:
+        conditions.append(f"tstp >= '{start_date}'")
+    if end_date:
+        conditions.append(f"tstp <= '{end_date}'")
+    
+    if conditions:
+        query += " AND " + " AND ".join(conditions)
+    
+    query += " ORDER BY process_id"
+    
+    conn = get_db_connection()
+    result = pd.read_sql(query, conn)
+    return result["process_id"].tolist() 

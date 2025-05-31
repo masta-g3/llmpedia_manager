@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from utils import init_auth_sidebar, init_cache_controls
+from utils import init_auth_sidebar, init_cache_controls, init_date_range_selector
 from theme import apply_theme
 from data import load_tweet_analytics, get_thread_metrics
 from plots import create_time_series, create_bar_chart, apply_chart_theme
@@ -335,49 +335,78 @@ def main():
     # Controls in a zen panel
     st.markdown('<div class="zen-panel">', unsafe_allow_html=True)
     
-    # Date range selector
-    min_date = df['Date'].min().date()
-    max_date = df['Date'].max().date()
+    # Date filtering mode selector
+    filter_mode = st.radio(
+        "Date Filter Style",
+        ["Standard Ranges", "Custom Interface"],
+        horizontal=True,
+        help="Choose between standard range selector or custom date interface"
+    )
     
-    col1, col2, col3 = st.columns([1, 1, 1])
-    
-    with col1:
-        # Quick date range buttons
-        date_range = st.radio(
-            "Quick ranges",
-            ["Last week", "Last month", "Last 3 months", "Last 6 months", "All time"],
-            horizontal=True,
-            index=2  # Set default to "Last 3 months" (index 2 in the list)
+    if filter_mode == "Standard Ranges":
+        # Use the standard component
+        start_date, end_date = init_date_range_selector(
+            key_prefix="posts",
+            default_range="Last 30 Days",
+            include_custom=True
         )
+        
+        # Convert to date objects for filtering
+        if start_date:
+            start_date_filter = start_date.date()
+        else:
+            start_date_filter = df['Date'].min().date()
+            
+        if end_date:
+            end_date_filter = end_date.date()
+        else:
+            end_date_filter = df['Date'].max().date()
     
-    # Calculate default dates based on selection
-    today = pd.Timestamp.now().date()
-    if date_range == "Last week":
-        default_start = (today - pd.Timedelta(days=7))
-    elif date_range == "Last month":
-        default_start = (today - pd.Timedelta(days=30))
-    elif date_range == "Last 3 months":
-        default_start = (today - pd.Timedelta(days=90))
-    elif date_range == "Last 6 months":
-        default_start = (today - pd.Timedelta(days=180))
-    else:  # All time
-        default_start = min_date
-    
-    with col2, col3:
-        start_date, end_date = st.columns(2)
-        with start_date:
-            start_date = st.date_input("Start date", 
-                                     value=max(min_date, default_start),
-                                     min_value=min_date,
-                                     max_value=max_date)
-        with end_date:
-            end_date = st.date_input("End date",
-                                   value=max_date,
-                                   min_value=min_date,
-                                   max_value=max_date)
+    else:
+        # Original custom interface
+        # Date range selector
+        min_date = df['Date'].min().date()
+        max_date = df['Date'].max().date()
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            # Quick date range buttons
+            date_range = st.radio(
+                "Quick ranges",
+                ["Last week", "Last month", "Last 3 months", "Last 6 months", "All time"],
+                horizontal=True,
+                index=2  # Set default to "Last 3 months" (index 2 in the list)
+            )
+        
+        # Calculate default dates based on selection
+        today = pd.Timestamp.now().date()
+        if date_range == "Last week":
+            default_start = (today - pd.Timedelta(days=7))
+        elif date_range == "Last month":
+            default_start = (today - pd.Timedelta(days=30))
+        elif date_range == "Last 3 months":
+            default_start = (today - pd.Timedelta(days=90))
+        elif date_range == "Last 6 months":
+            default_start = (today - pd.Timedelta(days=180))
+        else:  # All time
+            default_start = min_date
+        
+        with col2, col3:
+            start_date_col, end_date_col = st.columns(2)
+            with start_date_col:
+                start_date_filter = st.date_input("Start date", 
+                                         value=max(min_date, default_start),
+                                         min_value=min_date,
+                                         max_value=max_date)
+            with end_date_col:
+                end_date_filter = st.date_input("End date",
+                                       value=max_date,
+                                       min_value=min_date,
+                                       max_value=max_date)
     
     # Filter dataframe based on date range
-    mask = (df['Date'].dt.date >= start_date) & (df['Date'].dt.date <= end_date)
+    mask = (df['Date'].dt.date >= start_date_filter) & (df['Date'].dt.date <= end_date_filter)
     filtered_df = df[mask].copy()
     
     # Metrics selection

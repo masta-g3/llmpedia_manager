@@ -445,7 +445,8 @@ def create_pie_chart(df: pd.DataFrame,
     fig.update_layout(
         margin=dict(t=30 if title else 10, b=0, l=0, r=0),
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=st.get_option("theme.textColor"))
+        font=dict(color=st.get_option("theme.textColor")),
+        title=""
     )
     
     return fig
@@ -518,3 +519,125 @@ def format_hover_template(metric_name: str, date_format: str = '%Y-%m-%d') -> st
         Hover template string
     """
     return f"{metric_name}: %{{y:,.0f}}<br>Date: %{{x|{date_format}}}<extra></extra>"
+
+def get_theme_colors(is_dark_mode=None):
+    """Get theme colors for consistent chart styling."""
+    if is_dark_mode is None:
+        is_dark_mode = st.get_option("theme.backgroundColor") in ["#0e1117", "#111111", "#0E0E0E", "#121212"]
+    
+    if is_dark_mode:
+        return {
+            'primary': '#7F95D1',
+            'secondary': '#D9BF8C', 
+            'tertiary': '#88A096',
+            'quaternary': '#A8A8A8',
+            'palette': ['#7F95D1', '#D9BF8C', '#88A096', '#A8A8A8', '#C9A96E', '#6B8E88']
+        }
+    else:
+        return {
+            'primary': '#5D76B5',
+            'secondary': '#B5946A',
+            'tertiary': '#6A8475', 
+            'quaternary': '#888888',
+            'palette': ['#5D76B5', '#B5946A', '#6A8475', '#888888', '#A67C52', '#5A7169']
+        }
+
+def create_grouped_time_series(df: pd.DataFrame,
+                             chart_type: str = "area",
+                             group_by: str = "token_type",
+                             height: int = 300,
+                             title: Optional[str] = None,
+                             xaxis_title: Optional[str] = "Date",
+                             yaxis_title: Optional[str] = "Cost (USD)") -> go.Figure:
+    """
+    Create a flexible time series chart that can group by different dimensions.
+    
+    Args:
+        df: DataFrame with columns: date, category, cost, runs
+        chart_type: Either "area" or "bar" 
+        group_by: The grouping dimension (for color mapping)
+        height: Chart height in pixels
+        title: Optional chart title
+        xaxis_title: X-axis title
+        yaxis_title: Y-axis title
+        
+    Returns:
+        Plotly figure object
+    """
+    if df.empty:
+        ## Return empty chart
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No data available for the selected period",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, xanchor='center', yanchor='middle',
+            showarrow=False,
+            font=dict(size=14, color="gray")
+        )
+        return apply_chart_theme(fig, height=height, title=title, 
+                               xaxis_title=xaxis_title, yaxis_title=yaxis_title)
+    
+    ## Get theme colors
+    colors = get_theme_colors()
+    color_palette = colors['palette']
+    
+    ## Pivot data for plotting
+    pivot_df = df.pivot(index='date', columns='category', values='cost').fillna(0)
+    
+    ## Sort categories for consistent legend order
+    categories = sorted(pivot_df.columns.tolist())
+    
+    ## Create figure
+    fig = go.Figure()
+    
+    if chart_type == "area":
+        ## Create stacked area chart
+        for i, category in enumerate(categories):
+            if category in pivot_df.columns:
+                color = color_palette[i % len(color_palette)]
+                ## Make colors semi-transparent for area charts
+                if color.startswith('#'):
+                    color = f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, 0.7)"
+                
+                fig.add_trace(go.Scatter(
+                    x=pivot_df.index,
+                    y=pivot_df[category],
+                    name=category,
+                    mode='lines',
+                    line=dict(width=0.5),
+                    fill='tonexty',
+                    stackgroup='one',
+                    fillcolor=color,
+                    line_color=color
+                ))
+    
+    elif chart_type == "bar":
+        ## Create stacked bar chart
+        for i, category in enumerate(categories):
+            if category in pivot_df.columns:
+                color = color_palette[i % len(color_palette)]
+                
+                fig.add_trace(go.Bar(
+                    x=pivot_df.index,
+                    y=pivot_df[category],
+                    name=category,
+                    marker_color=color,
+                    opacity=0.85
+                ))
+        
+        ## Set bar mode to stacked
+        fig.update_layout(barmode='stack')
+    
+    ## Apply theme
+    fig = apply_chart_theme(
+        fig, 
+        height=height, 
+        title=title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title
+    )
+    
+    # Explicitly clear title since we use Streamlit section headers
+    fig.update_layout(title="")
+    
+    return fig

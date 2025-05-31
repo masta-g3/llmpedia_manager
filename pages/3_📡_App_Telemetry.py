@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from utils import init_auth_sidebar, init_cache_controls
+from utils import init_auth_sidebar, init_cache_controls, init_date_range_selector
 from theme import apply_theme
 from plots import apply_chart_theme, create_time_series
 from db import (
@@ -137,25 +137,14 @@ def main():
     
     st.title("📡 System Telemetry")
     
-    # Time range selector
+    # Time range selector using the new component
     col1, col2 = st.columns(2)
     with col1:
-        time_range = st.selectbox(
-            "Time Range",
-            ["Last 24 Hours", "Last 7 Days", "Last 30 Days", "All Time"],
-            index=1
+        start_date, end_date = init_date_range_selector(
+            key_prefix="telemetry",
+            default_range="Last 7 Days",
+            include_custom=True
         )
-    
-    # Calculate date range
-    now = datetime.now()
-    if time_range == "Last 24 Hours":
-        start_date = now - timedelta(days=1)
-    elif time_range == "Last 7 Days":
-        start_date = now - timedelta(days=7)
-    elif time_range == "Last 30 Days":
-        start_date = now - timedelta(days=30)
-    else:
-        start_date = None
     
     # Load data for the selected time range
     visits_df = load_visit_logs(start_date=start_date)

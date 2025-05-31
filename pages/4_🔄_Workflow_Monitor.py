@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from utils import init_auth_sidebar, display_refresh_controls, init_cache_controls
+from utils import init_auth_sidebar, display_refresh_controls, init_cache_controls, init_date_range_selector
 from theme import apply_theme
 from plots import create_bar_chart, apply_chart_theme
 from db import load_workflow_runs
@@ -36,6 +36,26 @@ def get_workflow_stats(df):
         'error_count': error_count
     }
 
+def format_last_run_time(timestamp):
+    """Format the last run timestamp for metric display."""
+    now = datetime.now()
+    time_diff = now - timestamp.replace(tzinfo=None)
+    
+    # If within the last day, show relative time
+    if time_diff.total_seconds() < 86400:  # 24 hours
+        hours = int(time_diff.total_seconds() // 3600)
+        minutes = int((time_diff.total_seconds() % 3600) // 60)
+        
+        if hours > 0:
+            return f"{hours}h {minutes}m ago"
+        elif minutes > 0:
+            return f"{minutes}m ago"
+        else:
+            return "Just now"
+    else:
+        # For older timestamps, show compact date format
+        return timestamp.strftime('%m/%d %H:%M')
+
 def plot_step_performance(df):
     """Create a step performance visualization."""
     step_stats = df.groupby('step_name').agg({
@@ -66,6 +86,7 @@ def plot_step_performance(df):
     
     # Additional customizations specific to this chart
     fig.update_layout(
+        title="",  # Remove chart title
         xaxis=dict(
             tickangle=45,
             showgrid=False
@@ -134,6 +155,7 @@ def plot_timeline(df):
     
     # Apply specific customizations for this chart
     fig.update_layout(
+        title="",  # Remove chart title
         margin=dict(l=150, r=0),  # Increased left margin for step names
         xaxis=dict(
             title="",
@@ -174,25 +196,14 @@ def main():
     # Refresh controls
     display_refresh_controls(refresh_interval_seconds=30)
     
-    # Time range selector
+    # Time range selector using the new component
     col1, col2 = st.columns([2, 1])
     with col1:
-        time_range = st.selectbox(
-            "Time Range",
-            ["Last 24 Hours", "Last 7 Days", "Last 30 Days", "All Time"],
-            index=1
+        start_date, end_date = init_date_range_selector(
+            key_prefix="workflow",
+            default_range="Last 7 Days",
+            include_custom=True
         )
-    
-    # Calculate date range
-    now = datetime.now()
-    if time_range == "Last 24 Hours":
-        start_date = now - timedelta(days=1)
-    elif time_range == "Last 7 Days":
-        start_date = now - timedelta(days=7)
-    elif time_range == "Last 30 Days":
-        start_date = now - timedelta(days=30)
-    else:
-        start_date = None
     
     # Load workflow data
     df = load_workflow_runs(start_date=start_date)
@@ -207,7 +218,8 @@ def main():
     with col2:
         st.metric("Success Rate", f"{stats['success_rate']:.1f}%")
     with col3:
-        st.metric("Last Run", stats['last_run'].strftime('%Y-%m-%d %H:%M:%S'))
+        formatted_last_run = format_last_run_time(stats['last_run'])
+        st.metric("Last Run", formatted_last_run)
     with col4:
         st.metric("Total Errors", f"{stats['error_count']:,}")
     

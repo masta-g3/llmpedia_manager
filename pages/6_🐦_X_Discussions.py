@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
-from utils import init_auth_sidebar, init_cache_controls
+from utils import init_auth_sidebar, init_cache_controls, init_date_range_selector
 from theme import apply_theme
 from plots import create_time_series, create_bar_chart, apply_chart_theme
 from db import (
@@ -146,25 +146,14 @@ def plot_engagement_distribution(df: pd.DataFrame, metric: str) -> go.Figure:
 def main():
     st.title("🐦 Social Media Discussions")
     
-    # Time range selector
+    # Time range selector using the new component
     col1, col2 = st.columns([2, 1])
     with col1:
-        time_range = st.selectbox(
-            "Time Range",
-            ["Last 24 Hours", "Last 7 Days", "Last 30 Days", "All Time"],
-            index=1
+        start_date, end_date = init_date_range_selector(
+            key_prefix="discussions",
+            default_range="Last 7 Days", 
+            include_custom=True
         )
-    
-    # Calculate date range
-    now = datetime.now()
-    if time_range == "Last 24 Hours":
-        start_date = now - timedelta(days=1)
-    elif time_range == "Last 7 Days":
-        start_date = now - timedelta(days=7)
-    elif time_range == "Last 30 Days":
-        start_date = now - timedelta(days=30)
-    else:
-        start_date = None
     
     # Load cached data
     data = load_cached_data(start_date=start_date)
