@@ -4,3 +4,5 @@
 data/*_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].csv
 *.pyc
 *.DS_Store
+PLANNING.md
+CHANGES.md

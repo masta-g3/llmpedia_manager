@@ -101,13 +101,9 @@ def apply_chart_theme(fig,
         )
     )
     
-    # Update color sequence for consistent branding
-    if is_dark_mode:
-        # Dark mode color sequence - subtle, zen-inspired colors
-        colors = ['#7F95D1', '#D9BF8C', '#88A096', '#A8A8A8']
-    else:
-        # Light mode color sequence - subtle, zen-inspired colors
-        colors = ['#5D76B5', '#B5946A', '#6A8475', '#888888']
+    # Update color sequence for consistent branding - use extended palette
+    theme_colors = get_theme_colors(is_dark_mode)
+    colors = theme_colors['palette']
         
     # Apply colors to traces if they exist
     if fig.data:
@@ -307,10 +303,19 @@ def create_grouped_bar_chart(df: pd.DataFrame,
     """
     fig = go.Figure()
     
-    # Default colors if not provided
+    # Default colors if not provided - use extended palette
     if colors is None:
-        colors = ['rgba(55, 83, 109, 0.7)', 'rgba(26, 118, 255, 0.7)', 
-                 'rgba(78, 121, 167, 0.7)', 'rgba(242, 142, 43, 0.7)']
+        theme_colors = get_theme_colors()
+        # Convert hex colors to rgba with transparency for bar charts
+        colors = []
+        for hex_color in theme_colors['palette']:
+            if hex_color.startswith('#'):
+                r = int(hex_color[1:3], 16)
+                g = int(hex_color[3:5], 16)
+                b = int(hex_color[5:7], 16)
+                colors.append(f"rgba({r}, {g}, {b}, 0.85)")
+            else:
+                colors.append(hex_color)
     
     # Set default labels if not provided
     if labels is None:
@@ -370,10 +375,19 @@ def create_area_chart(df: pd.DataFrame,
     """
     fig = go.Figure()
     
-    # Default colors if not provided
+    # Default colors if not provided - use extended palette
     if colors is None:
-        colors = ['rgba(55, 83, 109, 0.7)', 'rgba(26, 118, 255, 0.7)', 
-                 'rgba(78, 121, 167, 0.7)', 'rgba(242, 142, 43, 0.7)']
+        theme_colors = get_theme_colors()
+        # Convert hex colors to rgba with transparency for area charts
+        colors = []
+        for hex_color in theme_colors['palette']:
+            if hex_color.startswith('#'):
+                r = int(hex_color[1:3], 16)
+                g = int(hex_color[3:5], 16)
+                b = int(hex_color[5:7], 16)
+                colors.append(f"rgba({r}, {g}, {b}, 0.7)")
+            else:
+                colors.append(hex_color)
     
     # Set default labels if not provided
     if labels is None:
@@ -430,6 +444,11 @@ def create_pie_chart(df: pd.DataFrame,
     Returns:
         Plotly figure object
     """
+    # Use extended palette if no custom colors provided
+    if color_sequence is None:
+        theme_colors = get_theme_colors()
+        color_sequence = theme_colors['palette']
+    
     # Create the pie chart
     fig = px.pie(
         df,
@@ -521,7 +540,7 @@ def format_hover_template(metric_name: str, date_format: str = '%Y-%m-%d') -> st
     return f"{metric_name}: %{{y:,.0f}}<br>Date: %{{x|{date_format}}}<extra></extra>"
 
 def get_theme_colors(is_dark_mode=None):
-    """Get theme colors for consistent chart styling."""
+    """Get theme colors for consistent chart styling with extended palette for many categories."""
     if is_dark_mode is None:
         is_dark_mode = st.get_option("theme.backgroundColor") in ["#0e1117", "#111111", "#0E0E0E", "#121212"]
     
@@ -531,7 +550,28 @@ def get_theme_colors(is_dark_mode=None):
             'secondary': '#D9BF8C', 
             'tertiary': '#88A096',
             'quaternary': '#A8A8A8',
-            'palette': ['#7F95D1', '#D9BF8C', '#88A096', '#A8A8A8', '#C9A96E', '#6B8E88']
+            'palette': [
+                '#7F95D1',  # Blue
+                '#D9BF8C',  # Gold
+                '#88A096',  # Sage
+                '#C9A96E',  # Amber
+                '#6B8E88',  # Teal
+                '#A8A8A8',  # Gray
+                '#9B85B3',  # Purple
+                '#D4997A',  # Orange
+                '#7A9B85',  # Forest
+                '#B39B85',  # Taupe
+                '#85B39B',  # Mint
+                '#997AD4',  # Lavender
+                '#B3859B',  # Rose
+                '#85A8B3',  # Steel
+                '#D49B7A',  # Peach
+                '#9BD485',  # Lime
+                '#7A85D4',  # Periwinkle
+                '#D4857A',  # Coral
+                '#859BD4',  # Sky
+                '#D4D485'   # Yellow
+            ]
         }
     else:
         return {
@@ -539,7 +579,28 @@ def get_theme_colors(is_dark_mode=None):
             'secondary': '#B5946A',
             'tertiary': '#6A8475', 
             'quaternary': '#888888',
-            'palette': ['#5D76B5', '#B5946A', '#6A8475', '#888888', '#A67C52', '#5A7169']
+            'palette': [
+                '#5D76B5',  # Blue
+                '#B5946A',  # Gold
+                '#6A8475',  # Sage
+                '#A67C52',  # Amber
+                '#5A7169',  # Teal
+                '#888888',  # Gray
+                '#7A6B93',  # Purple
+                '#B5825A',  # Orange
+                '#5A7A6B',  # Forest
+                '#937A6B',  # Taupe
+                '#6B937A',  # Mint
+                '#7A5AB5',  # Lavender
+                '#936B7A',  # Rose
+                '#6B8893',  # Steel
+                '#B57A5A',  # Peach
+                '#7AB55A',  # Lime
+                '#5A6BB5',  # Periwinkle
+                '#B5635A',  # Coral
+                '#5A7AB5',  # Sky
+                '#B5B35A'   # Yellow
+            ]
         }
 
 def create_grouped_time_series(df: pd.DataFrame,
