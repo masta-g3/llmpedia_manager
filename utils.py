@@ -6,6 +6,16 @@ import pandas as pd
 
 def init_auth_sidebar():
     """Initialize the authentication sidebar with a subtle design."""
+    
+    ## Check for password in URL query parameters first
+    url_password = st.query_params.get("password")
+    if url_password and not st.session_state.get("password_correct", False):
+        if hmac.compare_digest(url_password, st.secrets["password"]):
+            st.session_state["password_correct"] = True
+        else:
+            ## Invalid URL password - show warning but don't block sidebar auth
+            st.warning("⚠️ Invalid password in URL parameter")
+    
     with st.sidebar:
         st.markdown('<div class="auth-container">', unsafe_allow_html=True)
         st.markdown("#### 🔐 Authentication", help="Login to access all features")
@@ -19,9 +29,13 @@ def init_auth_sidebar():
                 st.session_state["password_correct"] = False
 
         if st.session_state.get("password_correct", False):
-            st.markdown('<div class="auth-status logged-in">Logged in</div>', unsafe_allow_html=True)
+            auth_method = "via URL" if url_password and hmac.compare_digest(url_password, st.secrets["password"]) else "via form"
+            st.markdown(f'<div class="auth-status logged-in">Logged in {auth_method}</div>', unsafe_allow_html=True)
             if st.button("Logout", type="secondary", use_container_width=True):
                 st.session_state["password_correct"] = False
+                ## Clear URL password parameter on logout
+                if "password" in st.query_params:
+                    del st.query_params["password"]
                 st.rerun()
         else:
             st.markdown('<div class="auth-status logged-out">', unsafe_allow_html=True)
